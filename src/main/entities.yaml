@@ -1,5 +1,12 @@
 substitutions:
   # Change these to match your Home Assistant instance before flashing.
-  weather_entity: weather.your_location
-  climate_entity: climate.your_ac
-  music_player_entity: media_player.your_player
+  weather_entity: weather.forecast_home
+  aqi_entity: sensor.kaiserslautern_rathausplatz_germany_air_quality_index
+  climate_entity: climate.pinguino
+  music_player_entity: media_player.speaker_1_sendspin_media_player
+  light_kitchen_entity: light.kitchen_main_led
+  light_bedroom_strip_entity: light.bedroom_rgb_strip
+  light_bedroom_bulb_entity: light.bedroom_rgb_bulb
+  light_living_entity: light.living_led
+  light_test_strip_entity: light.test_ws2815_strip
+  switch_test_entity: switch.test_main_led

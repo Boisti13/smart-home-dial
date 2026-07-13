@@ -24,12 +24,14 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 ## What it can do
 
 - Show time, date, and weather data from Home Assistant.
-- Navigate with the rotary encoder, touch gestures, and the front button.
+- Navigate with the rotary encoder, touch gestures, and the front button. From the home screen, swiping left or rotating past one detent opens the main menu.
 - Control the built-in LED ring with brightness, color, and preset color flows.
-- Adjust an air conditioner entity from Home Assistant.
+- Control multiple Home Assistant lights/switches from a scrollable Lights submenu (on/off and brightness).
+- Adjust an air conditioner entity from Home Assistant, including target temperature, power, and fan speed (auto/low/medium/high).
 - Show a music page with playback buttons, volume, progress, and album art.
 - Run a simple countdown timer.
 - Show a small fridge/food status page.
+- Adjust display sleep and idle return-to-home timeouts from a Settings submenu; the screen dims automatically and the first touch/turn after sleep only wakes it.
 - Keep the device alive on battery power on M5Dial V1.1 by enabling the power-hold pin.
 
 ## Gallery
@@ -45,11 +47,12 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 | --- | --- |
 | Clock | Time, date, weather, humidity, AQI, pressure, and wind speed |
 | Menu | Circular page navigation for the small round screen |
-| Light | LED ring brightness, color, and effects |
-| AC | Target temperature and power control; fan/swing UI can be mapped to your own climate services |
+| Lights | Submenu listing the onboard LED ring ("Dial Ring") plus your Home Assistant lights/switches; each opens its own simple on/off + brightness page (the LED ring keeps its full color/effects page) |
+| AC | Target temperature, power, and fan speed (auto/low/medium/high) control; swing is a local UI toggle only |
 | Music | SendSpin media state, cover art, progress, volume, and transport controls |
 | Fridge | Small food freshness/status cards |
 | Timer | Countdown timer with rotary adjustment |
+| Settings | Submenu for Display Timeout (backlight sleep) and Menu Timeout (idle return to the home screen) |
 
 ## Hardware
 
@@ -80,6 +83,8 @@ m5dial-smart-button/
 |   |   |-- hardware.yaml        # M5Dial pins, display, touch, RTC, power hold
 |   |   `-- entities.yaml        # Home Assistant entity IDs
 |   |-- pages/                   # One LVGL page per feature
+|   |   |-- ha_lights.yaml       # Lights submenu + per-light on/off/brightness page
+|   |   `-- settings.yaml        # Settings submenu, timeouts, backlight sleep/wake
 |   `-- assets/                  # Fonts and small image assets
 |-- components/                  # Local ESPHome components, including SendSpin
 |-- hardware/                    # 3D-printable enclosure files
@@ -128,11 +133,22 @@ Edit `src/main/entities.yaml`:
 ```yaml
 substitutions:
   weather_entity: weather.your_location
+  aqi_entity: sensor.your_air_quality_index
   climate_entity: climate.your_ac
   music_player_entity: media_player.your_player
+  light_kitchen_entity: light.your_light_1
+  light_bedroom_strip_entity: light.your_light_2
+  light_bedroom_bulb_entity: light.your_light_3
+  light_living_entity: light.your_light_4
+  light_test_strip_entity: light.your_light_5
+  switch_test_entity: switch.your_switch
 ```
 
 You can find these entity IDs in Home Assistant under **Developer Tools -> States**.
+
+The Lights submenu is fixed at five `light.*` entities plus one `switch.*` entity (on/off only, no brightness). If you have fewer real lights than that, point the unused substitutions at any entity you don't mind seeing greyed out, or see "Notes about the Lights submenu" below for how to change the count. The display names shown on the Dial ("Kitchen", "Bed Underglow", etc.) are hardcoded in `src/pages/ha_lights.yaml` and `src/pages/menu.yaml` — edit the `TITLES`/`NAMES` arrays there to match your own naming.
+
+Most weather integrations do not expose an `aqi` attribute, so AQI is read from its own sensor entity instead (its state, not an attribute). The [World Air Quality Index (WAQI)](https://www.home-assistant.io/integrations/waqi/) integration is a simple way to get one.
 
 For the music page, choose the media player that actually plays audio. It should report useful attributes such as `volume_level`, `media_title`, `media_duration`, and `media_position`. If the entity is `unavailable`, the Dial cannot sync it.
 
@@ -160,7 +176,26 @@ If volume control does not work, first check the Home Assistant media player ent
 
 ## Notes about AC controls
 
-Climate entities are not all the same. Temperature and power are wired to Home Assistant services in this project. Fan speed and swing are shown as UI controls, but you may need to map them to `climate.set_fan_mode`, `climate.set_swing_mode`, or your own scripts depending on your air conditioner integration.
+Climate entities are not all the same. Temperature, power, and fan speed are wired to Home Assistant services (`climate.set_temperature`, `climate.set_hvac_mode`, `climate.set_fan_mode`) in this project. Swing is a local UI toggle only and is not sent to Home Assistant.
+
+The power button toggles between `hvac_mode: cool` and `hvac_mode: off`, and the fan control cycles `fan_mode` through `auto` / `low` / `medium` / `high`. These strings must match what your specific AC integration actually supports — check `hvac_modes` and `fan_modes` on your climate entity in **Developer Tools -> States**, and edit the mode strings in `src/pages/air.yaml` (the `btn_air_power` on-click handler, and the `air_fan_up`/`air_fan_down` scripts) if your AC uses different values.
+
+The home screen's AC menu tile and the Lights submenu's per-light tiles read their current on/off state directly from Home Assistant, so they stay in sync even if the AC or a light is changed from elsewhere.
+
+## Notes about the Lights submenu
+
+The Lights submenu (`src/pages/ha_lights.yaml`) lists the onboard LED ring ("Dial Ring") plus five `light.*` entities and one `switch.*` entity from Home Assistant. Unlike the LED ring, these Home Assistant lights only get a simple on/off + brightness page — no color picker or effects, since not every bulb supports RGB.
+
+To change which entities appear or how many there are, you need to touch three places consistently: the `light_*_entity`/`switch_*_entity` substitutions in `src/main/entities.yaml`, the `ENTITY_IDS` arrays and per-entity `sensor`/`text_sensor` blocks in `src/pages/ha_lights.yaml`, and the `NAMES`/`TITLES` display-name arrays in `src/pages/ha_lights.yaml` and `src/pages/menu.yaml`. Adding or removing an entity means updating the item count (`ITEM_N`) in the submenu's carousel code too.
+
+## Notes about Settings (Display Timeout / Menu Timeout)
+
+The Settings submenu (`src/pages/settings.yaml`) has two adjustable values, both in seconds and both persisted across reboots:
+
+- **Display Timeout** turns off the backlight after this many seconds of inactivity. The first touch or encoder turn afterward only wakes the screen back up — it is swallowed and not treated as a normal button press or menu scroll.
+- **Menu Timeout** automatically returns to the home/clock screen after this many seconds of inactivity, no matter how deep in the menus you are.
+
+Both timers share the same activity tracker, which resets on any touch or encoder input anywhere in the UI. Default values are 30s (display) and 60s (menu); adjust the range/step in the `display_timeout_up`/`down` and `menu_timeout_up`/`down` scripts if 5–300 seconds in steps of 5 does not suit you.
 
 ## Notes about battery power
 
@@ -170,7 +205,11 @@ M5Dial V1.1 needs the hold pin to stay enabled when running from battery. This p
 
 - **Device is unavailable in Home Assistant**: make sure the `api` section is enabled and port `6053` is reachable.
 - **Wrong weather values**: change `weather_entity` in `src/main/entities.yaml`.
+- **AQI stuck on `--`**: `aqi_entity` in `src/main/entities.yaml` must point to an air-quality sensor's own state, not an attribute on the weather entity.
 - **Wrong AC entity**: change `climate_entity` in `src/main/entities.yaml`.
+- **AC power/temperature/fan calls do nothing in Home Assistant**: check Settings -> Devices & Services -> ESPHome -> your device for "Allow the device to perform Home Assistant actions", and confirm your `hvac_mode`/`fan_mode` strings actually exist on the entity (see "Notes about AC controls").
+- **Uploading with `esphome upload` seems to ignore your latest edits**: run `esphome compile dial.yaml` first — `upload` alone reflashes whatever binary is already built, it does not recompile.
+- **Wrong or missing Lights submenu entity**: change the matching `light_*_entity`/`switch_*_entity` substitution in `src/main/entities.yaml` (see "Notes about the Lights submenu").
 - **Music page shows unavailable**: choose the real player entity, not the Dial entity itself.
 - **Album art causes reboot**: keep the artwork small and do not increase LVGL memory use too much.
 - **First build cannot download fonts**: connect to the internet once so ESPHome can fetch Google Fonts, or replace `gfonts://` fonts with local font files.
@@ -184,6 +223,9 @@ Most people will need to edit only these files:
 - `src/main/entities.yaml` for Home Assistant entity IDs.
 - `src/pages/main.yaml` if you want a different timezone or weather layout.
 - `src/pages/music.yaml` if you want to customize the music UI.
+- `src/pages/air.yaml` if your AC's `hvac_mode`/`fan_mode` strings differ from `cool`/`off`/`auto`/`low`/`medium`/`high`.
+- `src/pages/ha_lights.yaml` and `src/pages/menu.yaml` for the Lights submenu's entities and display names.
+- `src/pages/settings.yaml` for the default/min/max Display Timeout and Menu Timeout values.
 
 ## License
 

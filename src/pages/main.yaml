@@ -102,6 +102,11 @@ time:
       then:
         - pcf8563.write_time:
 
+globals:
+  - id: home_encoder_step_accum
+    type: int
+    initial_value: '0'
+
 script:
   - id: dial_back
     then:
@@ -112,6 +117,26 @@ script:
           }
           if (id(in_light) || id(in_colorpicker)) {
             id(close_light).execute();
+            return;
+          }
+          if (id(in_ha_light)) {
+            id(close_ha_light).execute();
+            return;
+          }
+          if (id(in_lights_menu)) {
+            id(close_lights_menu).execute();
+            return;
+          }
+          if (id(in_display_timeout)) {
+            id(close_display_timeout).execute();
+            return;
+          }
+          if (id(in_menu_timeout)) {
+            id(close_menu_timeout).execute();
+            return;
+          }
+          if (id(in_settings_menu)) {
+            id(close_settings_menu).execute();
             return;
           }
           if (id(in_air)) {
@@ -147,93 +172,189 @@ sensor:
     on_clockwise:
       - if:
           condition:
-            lambda: 'return id(in_colorpicker);'
+            lambda: 'return id(display_asleep);'
           then:
-            - script.execute: light_hue_up
-      - if:
-          condition:
-            lambda: 'return id(in_light) && !id(in_colorpicker) && !id(in_menu);'
-          then:
-            - script.execute: light_brightness_up
-      - if:
-          condition:
-            lambda: 'return id(in_air) && !id(in_menu);'
-          then:
-            - lambda: |-
-                id(air_encoder_step_accum) += 1;
-                if (id(air_encoder_step_accum) >= 4) {
-                  id(air_encoder_step_accum) = 0;
-                  if (id(air_mode) == 0) {
-                    id(air_temp_up).execute();
-                  } else {
-                    id(air_fan_up).execute();
-                  }
-                }
-      - if:
-          condition:
-            lambda: 'return id(in_music);'
-          then:
-            - script.execute: music_volume_up
-      - if:
-          condition:
-            lambda: 'return id(in_menu);'
-          then:
-            - script.execute: menu_scroll_down
-      - if:
-          condition:
-            lambda: 'return id(in_fridge);'
-          then:
-            - script.execute: fridge_scroll_down
-      - if:
-          condition:
-            lambda: 'return id(in_timer);'
-          then:
-            - script.execute: timer_encoder_up
+            - script.execute: wake_display
+          else:
+            - lambda: 'id(last_activity_ms) = millis();'
+            - if:
+                condition:
+                  lambda: 'return id(in_colorpicker);'
+                then:
+                  - script.execute: light_hue_up
+            - if:
+                condition:
+                  lambda: 'return id(in_light) && !id(in_colorpicker) && !id(in_menu);'
+                then:
+                  - script.execute: light_brightness_up
+            - if:
+                condition:
+                  lambda: 'return id(in_air) && !id(in_menu);'
+                then:
+                  - lambda: |-
+                      id(air_encoder_step_accum) += 1;
+                      if (id(air_encoder_step_accum) >= 4) {
+                        id(air_encoder_step_accum) = 0;
+                        if (id(air_mode) == 0) {
+                          id(air_temp_up).execute();
+                        } else {
+                          id(air_fan_up).execute();
+                        }
+                      }
+            - if:
+                condition:
+                  lambda: 'return id(in_music);'
+                then:
+                  - script.execute: music_volume_up
+            - if:
+                condition:
+                  lambda: 'return id(in_menu);'
+                then:
+                  - script.execute: menu_scroll_down
+            - if:
+                condition:
+                  lambda: 'return id(in_lights_menu);'
+                then:
+                  - script.execute: lights_menu_scroll_down
+            - if:
+                condition:
+                  lambda: 'return id(in_ha_light);'
+                then:
+                  - script.execute: ha_light_brightness_up
+            - if:
+                condition:
+                  lambda: 'return id(in_display_timeout);'
+                then:
+                  - script.execute: display_timeout_up
+            - if:
+                condition:
+                  lambda: 'return id(in_menu_timeout);'
+                then:
+                  - script.execute: menu_timeout_up
+            - if:
+                condition:
+                  lambda: 'return id(in_settings_menu);'
+                then:
+                  - script.execute: settings_menu_scroll_down
+            - if:
+                condition:
+                  lambda: 'return id(in_fridge);'
+                then:
+                  - script.execute: fridge_scroll_down
+            - if:
+                condition:
+                  lambda: 'return id(in_timer);'
+                then:
+                  - script.execute: timer_encoder_up
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
+                           !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
+                           !id(in_fridge) && !id(in_timer);
+                then:
+                  - lambda: |-
+                      int v = id(home_encoder_step_accum) + 1;
+                      if (v > 1) {
+                        id(home_encoder_step_accum) = 0;
+                        id(open_menu).execute();
+                      } else {
+                        id(home_encoder_step_accum) = v;
+                      }
     on_anticlockwise:
       - if:
           condition:
-            lambda: 'return id(in_colorpicker);'
+            lambda: 'return id(display_asleep);'
           then:
-            - script.execute: light_hue_down
-      - if:
-          condition:
-            lambda: 'return id(in_light) && !id(in_colorpicker) && !id(in_menu);'
-          then:
-            - script.execute: light_brightness_down
-      - if:
-          condition:
-            lambda: 'return id(in_air) && !id(in_menu);'
-          then:
-            - lambda: |-
-                id(air_encoder_step_accum) -= 1;
-                if (id(air_encoder_step_accum) <= -4) {
-                  id(air_encoder_step_accum) = 0;
-                  if (id(air_mode) == 0) {
-                    id(air_temp_down).execute();
-                  } else {
-                    id(air_fan_down).execute();
-                  }
-                }
-      - if:
-          condition:
-            lambda: 'return id(in_music);'
-          then:
-            - script.execute: music_volume_down
-      - if:
-          condition:
-            lambda: 'return id(in_menu);'
-          then:
-            - script.execute: menu_scroll_up
-      - if:
-          condition:
-            lambda: 'return id(in_fridge);'
-          then:
-            - script.execute: fridge_scroll_up
-      - if:
-          condition:
-            lambda: 'return id(in_timer);'
-          then:
-            - script.execute: timer_encoder_down
+            - script.execute: wake_display
+          else:
+            - lambda: 'id(last_activity_ms) = millis();'
+            - if:
+                condition:
+                  lambda: 'return id(in_colorpicker);'
+                then:
+                  - script.execute: light_hue_down
+            - if:
+                condition:
+                  lambda: 'return id(in_light) && !id(in_colorpicker) && !id(in_menu);'
+                then:
+                  - script.execute: light_brightness_down
+            - if:
+                condition:
+                  lambda: 'return id(in_air) && !id(in_menu);'
+                then:
+                  - lambda: |-
+                      id(air_encoder_step_accum) -= 1;
+                      if (id(air_encoder_step_accum) <= -4) {
+                        id(air_encoder_step_accum) = 0;
+                        if (id(air_mode) == 0) {
+                          id(air_temp_down).execute();
+                        } else {
+                          id(air_fan_down).execute();
+                        }
+                      }
+            - if:
+                condition:
+                  lambda: 'return id(in_music);'
+                then:
+                  - script.execute: music_volume_down
+            - if:
+                condition:
+                  lambda: 'return id(in_menu);'
+                then:
+                  - script.execute: menu_scroll_up
+            - if:
+                condition:
+                  lambda: 'return id(in_lights_menu);'
+                then:
+                  - script.execute: lights_menu_scroll_up
+            - if:
+                condition:
+                  lambda: 'return id(in_ha_light);'
+                then:
+                  - script.execute: ha_light_brightness_down
+            - if:
+                condition:
+                  lambda: 'return id(in_display_timeout);'
+                then:
+                  - script.execute: display_timeout_down
+            - if:
+                condition:
+                  lambda: 'return id(in_menu_timeout);'
+                then:
+                  - script.execute: menu_timeout_down
+            - if:
+                condition:
+                  lambda: 'return id(in_settings_menu);'
+                then:
+                  - script.execute: settings_menu_scroll_up
+            - if:
+                condition:
+                  lambda: 'return id(in_fridge);'
+                then:
+                  - script.execute: fridge_scroll_up
+            - if:
+                condition:
+                  lambda: 'return id(in_timer);'
+                then:
+                  - script.execute: timer_encoder_down
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
+                           !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
+                           !id(in_fridge) && !id(in_timer);
+                then:
+                  - lambda: |-
+                      int v = id(home_encoder_step_accum) - 1;
+                      if (v < -1) {
+                        id(home_encoder_step_accum) = 0;
+                        id(open_menu).execute();
+                      } else {
+                        id(home_encoder_step_accum) = v;
+                      }
 
   - platform: homeassistant
     id: ha_temperature
@@ -265,8 +386,7 @@ sensor:
 
   - platform: homeassistant
     id: ha_aqi
-    entity_id: ${weather_entity}
-    attribute: aqi
+    entity_id: ${aqi_entity}
     internal: true
     on_value:
       then:
@@ -325,12 +445,19 @@ binary_sensor:
         then:
           - if:
               condition:
-                lambda: 'return !id(button_debounce);'
+                lambda: 'return id(display_asleep);'
               then:
-                - globals.set: {id: button_debounce, value: 'true'}
-                - script.execute: dial_back
-                - delay: 250ms
-                - globals.set: {id: button_debounce, value: 'false'}
+                - script.execute: wake_display
+              else:
+                - if:
+                    condition:
+                      lambda: 'return !id(button_debounce);'
+                    then:
+                      - globals.set: {id: button_debounce, value: 'true'}
+                      - lambda: 'id(last_activity_ms) = millis();'
+                      - script.execute: dial_back
+                      - delay: 250ms
+                      - globals.set: {id: button_debounce, value: 'false'}
       - timing:
           - ON for at most 420ms
           - OFF for at least 520ms
@@ -338,20 +465,28 @@ binary_sensor:
         then:
           - if:
               condition:
-                lambda: 'return id(in_menu) && !id(button_debounce);'
+                lambda: 'return id(display_asleep);'
               then:
-                - globals.set: {id: button_debounce, value: 'true'}
-                - script.execute: menu_confirm
-                - delay: 250ms
-                - globals.set: {id: button_debounce, value: 'false'}
-          - if:
-              condition:
-                lambda: 'return id(in_timer) && !id(button_debounce);'
-              then:
-                - globals.set: {id: button_debounce, value: 'true'}
-                - script.execute: timer_toggle
-                - delay: 250ms
-                - globals.set: {id: button_debounce, value: 'false'}
+                - script.execute: wake_display
+              else:
+                - if:
+                    condition:
+                      lambda: 'return !id(button_debounce);'
+                    then:
+                      - globals.set: {id: button_debounce, value: 'true'}
+                      - lambda: |-
+                          id(last_activity_ms) = millis();
+                          if (id(in_menu)) {
+                            id(menu_confirm).execute();
+                          } else if (id(in_lights_menu)) {
+                            id(lights_menu_confirm).execute();
+                          } else if (id(in_settings_menu)) {
+                            id(settings_menu_confirm).execute();
+                          } else if (id(in_timer)) {
+                            id(timer_toggle).execute();
+                          }
+                      - delay: 250ms
+                      - globals.set: {id: button_debounce, value: 'false'}
   # M5Dial V1.1 uses GPIO46 as HOLD for battery power retention.
   # Keep this old back-button mapping commented; enabling it will conflict with
   # src/main/hardware.yaml:power_hold and battery-only boot will turn off again.

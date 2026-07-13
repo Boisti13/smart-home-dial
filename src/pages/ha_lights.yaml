@@ -1,0 +1,904 @@
+globals:
+  - id: in_lights_menu
+    type: bool
+    initial_value: 'false'
+  - id: lights_menu_sel
+    type: int
+    initial_value: '0'
+  - id: lights_menu_animating
+    type: bool
+    initial_value: 'false'
+  - id: in_ha_light
+    type: bool
+    initial_value: 'false'
+  - id: ha_light_sel
+    type: int
+    initial_value: '0'
+  - id: ha_light_on
+    type: bool[6]
+    initial_value: '{false, false, false, false, false, false}'
+  - id: ha_light_pct
+    type: int[5]
+    initial_value: '{100, 100, 100, 100, 100}'
+
+text_sensor:
+  - platform: homeassistant
+    id: ha_lt_state_0
+    entity_id: ${light_kitchen_entity}
+    on_value:
+      - lambda: |-
+          id(ha_light_on)[0] = (x == "on");
+          if (id(ha_light_sel) == 0 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_state_1
+    entity_id: ${light_bedroom_strip_entity}
+    on_value:
+      - lambda: |-
+          id(ha_light_on)[1] = (x == "on");
+          if (id(ha_light_sel) == 1 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_state_2
+    entity_id: ${light_bedroom_bulb_entity}
+    on_value:
+      - lambda: |-
+          id(ha_light_on)[2] = (x == "on");
+          if (id(ha_light_sel) == 2 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_state_3
+    entity_id: ${light_living_entity}
+    on_value:
+      - lambda: |-
+          id(ha_light_on)[3] = (x == "on");
+          if (id(ha_light_sel) == 3 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_state_4
+    entity_id: ${light_test_strip_entity}
+    on_value:
+      - lambda: |-
+          id(ha_light_on)[4] = (x == "on");
+          if (id(ha_light_sel) == 4 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_state_5
+    entity_id: ${switch_test_entity}
+    on_value:
+      - lambda: |-
+          id(ha_light_on)[5] = (x == "on");
+          if (id(ha_light_sel) == 5 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+sensor:
+  - platform: homeassistant
+    id: ha_lt_bri_0
+    entity_id: ${light_kitchen_entity}
+    attribute: brightness
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(ha_light_pct)[0] = (int)((x / 255.0f) * 100.0f + 0.5f);
+          if (id(ha_light_sel) == 0 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_bri_1
+    entity_id: ${light_bedroom_strip_entity}
+    attribute: brightness
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(ha_light_pct)[1] = (int)((x / 255.0f) * 100.0f + 0.5f);
+          if (id(ha_light_sel) == 1 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_bri_2
+    entity_id: ${light_bedroom_bulb_entity}
+    attribute: brightness
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(ha_light_pct)[2] = (int)((x / 255.0f) * 100.0f + 0.5f);
+          if (id(ha_light_sel) == 2 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_bri_3
+    entity_id: ${light_living_entity}
+    attribute: brightness
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(ha_light_pct)[3] = (int)((x / 255.0f) * 100.0f + 0.5f);
+          if (id(ha_light_sel) == 3 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_bri_4
+    entity_id: ${light_test_strip_entity}
+    attribute: brightness
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(ha_light_pct)[4] = (int)((x / 255.0f) * 100.0f + 0.5f);
+          if (id(ha_light_sel) == 4 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+script:
+  - id: open_lights_menu
+    then:
+      - globals.set: {id: in_lights_menu, value: 'true'}
+      - globals.set: {id: in_menu, value: 'false'}
+      - globals.set: {id: lights_menu_sel, value: '0'}
+      - script.execute: refresh_lights_menu
+      - lvgl.page.show:
+          id: page_lights_menu
+          animation: MOVE_LEFT
+
+  - id: close_lights_menu
+    then:
+      - globals.set: {id: in_lights_menu, value: 'false'}
+      - script.execute: open_menu
+
+  - id: lights_menu_scroll_up
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(lights_menu_animating);'
+          then:
+            - globals.set: {id: lights_menu_animating, value: 'true'}
+            - lambda: |-
+                // Counterclockwise arc scroll: previous item moves into center.
+                static lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, nullptr);
+                lv_anim_set_values(&a, 0, 100);
+                lv_anim_set_time(&a, 200);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
+                  const int SLOT_N = 5;
+                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+                  const float CY = 120.0f;
+                  const float ARC_CX = 162.0f;
+                  const float R = 98.0f;
+                  auto arc_dy = [](float off) -> float {
+                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+                    const float a = fabsf(off);
+                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+                  };
+
+                  lv_obj_t* slots[5] = {
+                    id(lm_far_up), id(lm_near_up), id(lm_center),
+                    id(lm_near_dn), id(lm_far_dn)
+                  };
+
+                  lv_obj_t* icons[5] = {
+                    id(lm_far_up_img),  id(lm_near_up_img),
+                    id(lm_center_img),
+                    id(lm_near_dn_img), id(lm_far_dn_img)
+                  };
+                  lv_obj_t* title_lbls[5] = {
+                    id(lm_far_up_lbl),  id(lm_near_up_lbl),
+                    id(lm_center_lbl),
+                    id(lm_near_dn_lbl), id(lm_far_dn_lbl)
+                  };
+
+                  const float phase = progress / 100.0f;
+                  int center_sub_opa = 0;
+
+                  for (int i = 0; i < SLOT_N; i++) {
+                    const float off = OFFSETS[i] + phase;
+                    float dy = arc_dy(off);
+                    if (dy > R) dy = R;
+                    if (dy < -R) dy = -R;
+
+                    const float theta = asinf(dy / R);
+                    const float x = ARC_CX - R * cosf(theta);
+                    const float y = CY + R * sinf(theta);
+
+                    float closeness = 1.0f - (fabsf(off) / 2.0f);
+                    if (closeness < 0.0f) closeness = 0.0f;
+                    if (closeness > 1.0f) closeness = 1.0f;
+
+                    const int mix = (int)(closeness * 1000.0f);
+                    int w = 40;
+                    int opa_text = 0;
+                    int opa_bg = 0;
+                    int pill_shift = 0;
+
+                    if (mix > 760) {
+                      w = lv_map(mix, 760, 1000, 40, 200);
+                    }
+                    if (mix > 840) {
+                      opa_text = lv_map(mix, 840, 1000, 0, 255);
+                    }
+                    if (mix > 820) {
+                      opa_bg = lv_map(mix, 820, 1000, 0, 255);
+                    }
+                    if (mix > 760) {
+                      pill_shift = lv_map(mix, 760, 1000, 0, 54);
+                    }
+                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+                    lv_obj_set_width(slots[i], w);
+                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
+                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
+                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
+                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
+
+                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
+
+                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
+                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
+
+                    if (i == 2) {
+                      center_sub_opa = opa_text;
+                    }
+                  }
+
+                  lv_obj_set_style_opa(id(lm_center_sub), center_sub_opa, LV_PART_MAIN);
+                });
+                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                  int n = 7;
+                  id(lights_menu_sel) = ((id(lights_menu_sel) - 1) % n + n) % n;
+                  id(refresh_lights_menu).execute();
+                  id(lights_menu_animating) = false;
+                });
+                lv_anim_start(&a);
+
+  - id: lights_menu_scroll_down
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(lights_menu_animating);'
+          then:
+            - globals.set: {id: lights_menu_animating, value: 'true'}
+            - lambda: |-
+                // Clockwise arc scroll: next item moves into center.
+                static lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, nullptr);
+                lv_anim_set_values(&a, 0, 100);
+                lv_anim_set_time(&a, 200);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
+                  const int SLOT_N = 5;
+                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+                  const float CY = 120.0f;
+                  const float ARC_CX = 162.0f;
+                  const float R = 98.0f;
+                  auto arc_dy = [](float off) -> float {
+                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+                    const float a = fabsf(off);
+                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+                  };
+
+                  lv_obj_t* slots[5] = {
+                    id(lm_far_up), id(lm_near_up), id(lm_center),
+                    id(lm_near_dn), id(lm_far_dn)
+                  };
+
+                  lv_obj_t* icons[5] = {
+                    id(lm_far_up_img),  id(lm_near_up_img),
+                    id(lm_center_img),
+                    id(lm_near_dn_img), id(lm_far_dn_img)
+                  };
+                  lv_obj_t* title_lbls[5] = {
+                    id(lm_far_up_lbl),  id(lm_near_up_lbl),
+                    id(lm_center_lbl),
+                    id(lm_near_dn_lbl), id(lm_far_dn_lbl)
+                  };
+
+                  const float phase = progress / 100.0f;
+                  int center_sub_opa = 0;
+
+                  for (int i = 0; i < SLOT_N; i++) {
+                    const float off = OFFSETS[i] - phase;
+                    float dy = arc_dy(off);
+                    if (dy > R) dy = R;
+                    if (dy < -R) dy = -R;
+
+                    const float theta = asinf(dy / R);
+                    const float x = ARC_CX - R * cosf(theta);
+                    const float y = CY + R * sinf(theta);
+
+                    float closeness = 1.0f - (fabsf(off) / 2.0f);
+                    if (closeness < 0.0f) closeness = 0.0f;
+                    if (closeness > 1.0f) closeness = 1.0f;
+
+                    const int mix = (int)(closeness * 1000.0f);
+                    int w = 40;
+                    int opa_text = 0;
+                    int opa_bg = 0;
+                    int pill_shift = 0;
+
+                    if (mix > 760) {
+                      w = lv_map(mix, 760, 1000, 40, 200);
+                    }
+                    if (mix > 840) {
+                      opa_text = lv_map(mix, 840, 1000, 0, 255);
+                    }
+                    if (mix > 820) {
+                      opa_bg = lv_map(mix, 820, 1000, 0, 255);
+                    }
+                    if (mix > 760) {
+                      pill_shift = lv_map(mix, 760, 1000, 0, 64);
+                    }
+                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+                    lv_obj_set_width(slots[i], w);
+                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
+                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
+                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
+                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
+
+                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
+
+                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
+                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
+
+                    if (i == 2) {
+                      center_sub_opa = opa_text;
+                    }
+                  }
+
+                  lv_obj_set_style_opa(id(lm_center_sub), center_sub_opa, LV_PART_MAIN);
+                });
+                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                  id(lights_menu_sel) = (id(lights_menu_sel) + 1) % 7;
+                  id(refresh_lights_menu).execute();
+                  id(lights_menu_animating) = false;
+                });
+                lv_anim_start(&a);
+
+  - id: lights_menu_confirm
+    then:
+      - if:
+          condition:
+            lambda: 'return id(lights_menu_sel) == 0;'
+          then:
+            - globals.set: {id: in_lights_menu, value: 'false'}
+            - script.execute: open_light
+          else:
+            - lambda: 'id(ha_light_sel) = id(lights_menu_sel) - 1;'
+            - globals.set: {id: in_lights_menu, value: 'false'}
+            - script.execute: open_ha_light
+
+  - id: refresh_lights_menu
+    then:
+      - lambda: |-
+          const int ITEM_N = 7;
+          const int SLOT_N = 5;
+          const float CY = 120.0f;
+          const float ARC_CX = 162.0f;
+          const float R = 98.0f;
+          auto arc_dy = [](float off) -> float {
+            const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+            const float a = fabsf(off);
+            return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+          };
+          const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+
+          const char* TITLES[7] = {"Dial Ring", "Kitchen", "Bed Underglow",
+                                    "Nightstand", "Living Room", "PC RGB", "PC Main"};
+          const uint32_t ACCENT_COLORS[7] = {
+            0xA792E8, 0xFDC003, 0xA98FFF, 0xFF6FA5, 0x5ABBFD, 0x4ADE80, 0xFB923C
+          };
+          const uint32_t PILL_COLORS[7] = {
+            0x1E1533, 0x2A2200, 0x231A33, 0x330E1E, 0x001A2A, 0x0A2A14, 0x2A1200
+          };
+
+          int sel = id(lights_menu_sel);
+
+          lv_obj_t* slots[5] = {
+            id(lm_far_up), id(lm_near_up), id(lm_center), id(lm_near_dn), id(lm_far_dn)
+          };
+          lv_obj_t* lbls[5] = {
+            id(lm_far_up_lbl), id(lm_near_up_lbl), id(lm_center_lbl), id(lm_near_dn_lbl), id(lm_far_dn_lbl)
+          };
+          lv_obj_t* icons[5] = {
+            id(lm_far_up_img), id(lm_near_up_img), id(lm_center_img), id(lm_near_dn_img), id(lm_far_dn_img)
+          };
+
+          for (int slot = 0; slot < SLOT_N; slot++) {
+            int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+
+            const float off = OFFSETS[slot];
+            float dy = arc_dy(off);
+            if (dy > R) dy = R;
+            if (dy < -R) dy = -R;
+
+            const float theta = asinf(dy / R);
+            const float x = ARC_CX - R * cosf(theta);
+            const float y = CY + R * sinf(theta);
+
+            float closeness = 1.0f - (fabsf(off) / 2.0f);
+            if (closeness < 0.0f) closeness = 0.0f;
+            if (closeness > 1.0f) closeness = 1.0f;
+            const int mix = (int)(closeness * 1000.0f);
+
+            int w = 40;
+            int opa_text = 0;
+            int opa_bg = 0;
+            int pill_shift = 0;
+            if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+            if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+            if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+            if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 54);
+
+            lv_obj_set_width(slots[slot], w);
+            lv_obj_set_height(slots[slot], slot == 2 ? 56 : 40);
+            lv_obj_set_style_radius(slots[slot], slot == 2 ? 28 : 20, LV_PART_MAIN);
+
+            if (slot == 2) {
+              lv_obj_set_style_bg_color(slots[slot], lv_color_hex(PILL_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], 128, LV_PART_MAIN);
+              lv_obj_set_style_border_color(slots[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_border_width(slots[slot], 2, LV_PART_MAIN);
+              lv_obj_set_style_border_opa(slots[slot], 255, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(slots[slot], lv_color_hex(0x0D1537), LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], opa_bg, LV_PART_MAIN);
+              lv_obj_set_style_border_width(slots[slot], 0, LV_PART_MAIN);
+            }
+
+            lv_obj_set_pos(slots[slot], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (slot == 2 ? 28.0f : 20.0f)));
+
+            lv_label_set_text(lbls[slot], TITLES[di]);
+            if (slot == 2) {
+              lv_obj_set_style_text_color(lbls[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_text_color(lbls[slot], lv_color_hex(0x232A38), LV_PART_MAIN);
+            }
+            lv_obj_set_style_opa(lbls[slot], slot == 2 ? 255 : opa_text, LV_PART_MAIN);
+
+            const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+            lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
+
+            if (slot == 2) {
+              bool item_on = (di == 0) ? id(light_on) : id(ha_light_on)[di - 1];
+              lv_label_set_text(id(lm_center_sub), item_on ? "On" : "Off");
+              lv_obj_set_style_text_color(id(lm_center_sub), lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_opa(id(lm_center_sub), 255, LV_PART_MAIN);
+            }
+          }
+
+          const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
+          lv_obj_t* sdots[7] = {
+            id(lm_sdot_0), id(lm_sdot_1), id(lm_sdot_2), id(lm_sdot_3),
+            id(lm_sdot_4), id(lm_sdot_5), id(lm_sdot_6)
+          };
+          for (int d = 0; d < ITEM_N; d++) {
+            if (d == sel) {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
+              lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
+              lv_obj_set_size(sdots[d], 8, 8);
+              lv_obj_set_style_radius(sdots[d], 0, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(sdots[d], 450, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(0x2A3348), LV_PART_MAIN);
+              lv_obj_set_style_opa(sdots[d], 180, LV_PART_MAIN);
+              lv_obj_set_size(sdots[d], 4, 4);
+              lv_obj_set_style_radius(sdots[d], 2, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(sdots[d], 0, LV_PART_MAIN);
+            }
+          }
+
+          // Remove border from pill itself
+          lv_obj_set_style_border_width(id(lm_center), 0, LV_PART_MAIN);
+
+  - id: open_ha_light
+    then:
+      - globals.set: {id: in_ha_light, value: 'true'}
+      - script.execute: refresh_ha_light
+      - lvgl.page.show:
+          id: page_ha_light
+          animation: MOVE_LEFT
+
+  - id: close_ha_light
+    then:
+      - globals.set: {id: in_ha_light, value: 'false'}
+      - script.execute: open_lights_menu
+
+  - id: toggle_ha_light
+    then:
+      - homeassistant.service:
+          service: homeassistant.toggle
+          data:
+            entity_id: !lambda |-
+              static const char* ENTITY_IDS[6] = {
+                "${light_kitchen_entity}", "${light_bedroom_strip_entity}",
+                "${light_bedroom_bulb_entity}", "${light_living_entity}",
+                "${light_test_strip_entity}", "${switch_test_entity}"
+              };
+              return std::string(ENTITY_IDS[id(ha_light_sel)]);
+
+  - id: ha_light_brightness_up
+    then:
+      - if:
+          condition:
+            lambda: 'return id(ha_light_sel) < 5;'
+          then:
+            - lambda: |-
+                int v = id(ha_light_pct)[id(ha_light_sel)] + 5;
+                if (v > 100) v = 100;
+                id(ha_light_pct)[id(ha_light_sel)] = v;
+            - homeassistant.service:
+                service: light.turn_on
+                data:
+                  entity_id: !lambda |-
+                    static const char* ENTITY_IDS[5] = {
+                      "${light_kitchen_entity}", "${light_bedroom_strip_entity}",
+                      "${light_bedroom_bulb_entity}", "${light_living_entity}",
+                      "${light_test_strip_entity}"
+                    };
+                    return std::string(ENTITY_IDS[id(ha_light_sel)]);
+                  brightness_pct: !lambda 'return std::to_string(id(ha_light_pct)[id(ha_light_sel)]);'
+            - script.execute: refresh_ha_light
+
+  - id: ha_light_brightness_down
+    then:
+      - if:
+          condition:
+            lambda: 'return id(ha_light_sel) < 5;'
+          then:
+            - lambda: |-
+                int v = id(ha_light_pct)[id(ha_light_sel)] - 5;
+                if (v < 1) v = 1;
+                id(ha_light_pct)[id(ha_light_sel)] = v;
+            - homeassistant.service:
+                service: light.turn_on
+                data:
+                  entity_id: !lambda |-
+                    static const char* ENTITY_IDS[5] = {
+                      "${light_kitchen_entity}", "${light_bedroom_strip_entity}",
+                      "${light_bedroom_bulb_entity}", "${light_living_entity}",
+                      "${light_test_strip_entity}"
+                    };
+                    return std::string(ENTITY_IDS[id(ha_light_sel)]);
+                  brightness_pct: !lambda 'return std::to_string(id(ha_light_pct)[id(ha_light_sel)]);'
+            - script.execute: refresh_ha_light
+
+  - id: refresh_ha_light
+    then:
+      - lambda: |-
+          static const char* NAMES[6] = {
+            "Kitchen", "Bed Underglow", "Nightstand",
+            "Living Room", "PC RGB", "PC Main"
+          };
+          int sel = id(ha_light_sel);
+          lv_label_set_text(id(lbl_ha_light_name), NAMES[sel]);
+          bool on = id(ha_light_on)[sel];
+          lv_label_set_text(id(lbl_ha_light_state), on ? "ON" : "OFF");
+          lv_obj_set_style_text_color(id(lbl_ha_light_state),
+            on ? lv_color_hex(0x4ADE80) : lv_color_hex(0x6B7280), LV_STATE_DEFAULT);
+          lv_obj_set_style_border_color(id(btn_ha_light_toggle),
+            on ? lv_color_hex(0x4ADE80) : lv_color_hex(0x262626), LV_STATE_DEFAULT);
+          lv_obj_set_style_shadow_color(id(btn_ha_light_toggle),
+            on ? lv_color_hex(0x4ADE80) : lv_color_hex(0x262626), LV_STATE_DEFAULT);
+          if (sel < 5) {
+            static char buf[6];
+            snprintf(buf, sizeof(buf), "%d%%", id(ha_light_pct)[sel]);
+            lv_label_set_text(id(lbl_ha_light_pct), buf);
+            lv_obj_clear_flag(id(lbl_ha_light_pct), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(lbl_ha_light_pct), LV_OBJ_FLAG_HIDDEN);
+          }
+
+lvgl:
+  pages:
+    - id: page_lights_menu
+      bg_color: col_menu_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      widgets:
+        - obj:
+            align: CENTER
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_menu_bg
+            border_width: 0
+            scrollbar_mode: "OFF"
+            pad_all: 0
+            widgets:
+              - obj:
+                  id: lm_far_up
+                  align: TOP_MID
+                  y: 6
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: lm_far_up_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_light
+                    - label:
+                        id: lm_far_up_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 25%
+
+              - obj:
+                  id: lm_near_up
+                  align: TOP_MID
+                  y: 42
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: lm_near_up_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_light
+                    - label:
+                        id: lm_near_up_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 50%
+
+              - obj:
+                  id: lm_center
+                  align: TOP_MID
+                  y: 102
+                  width: 168
+                  height: 56
+                  radius: 20
+                  bg_color: col_menu_pill
+                  bg_opa: COVER
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: lm_center_img
+                        align: LEFT_MID
+                        x: 14
+                        src: menu_img_light
+                    - label:
+                        id: lm_center_lbl
+                        x: 54
+                        y: 6
+                        text_font: font_menu_item
+                        text_color: col_text_pri
+                        width: 106
+                        long_mode: SCROLL_CIRCULAR
+                        text: ""
+                    - label:
+                        id: lm_center_sub
+                        x: 54
+                        y: 30
+                        text_font: font_menu_sub
+                        text_color: col_menu_val
+                        width: 106
+                        long_mode: DOT
+                        text: ""
+
+              - obj:
+                  id: lm_near_dn
+                  align: TOP_MID
+                  y: 162
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: lm_near_dn_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_light
+                    - label:
+                        id: lm_near_dn_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 50%
+
+              - obj:
+                  id: lm_far_dn
+                  align: TOP_MID
+                  y: 198
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: lm_far_dn_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_light
+                    - label:
+                        id: lm_far_dn_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 25%
+
+              - obj:
+                  id: lm_sdot_0
+                  align: RIGHT_MID
+                  x: -10
+                  y: -42
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: lm_sdot_1
+                  align: RIGHT_MID
+                  x: -10
+                  y: -28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: lm_sdot_2
+                  align: RIGHT_MID
+                  x: -10
+                  y: -14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: lm_sdot_3
+                  align: RIGHT_MID
+                  x: -10
+                  y: 0
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: lm_sdot_4
+                  align: RIGHT_MID
+                  x: -10
+                  y: 14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: lm_sdot_5
+                  align: RIGHT_MID
+                  x: -10
+                  y: 28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: lm_sdot_6
+                  align: RIGHT_MID
+                  x: -10
+                  y: 42
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+
+    - id: page_ha_light
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_ha_light
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: lbl_ha_light_name
+                  align: CENTER
+                  y: -55
+                  text: "Kitchen"
+                  text_font: font_val
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_ha_light_state
+                  align: CENTER
+                  y: -25
+                  text: "OFF"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_ha_light_pct
+                  align: CENTER
+                  y: 5
+                  text: "100%"
+                  text_font: font_val
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - obj:
+                  id: btn_ha_light_toggle
+                  align: CENTER
+                  y: 65
+                  width: 56
+                  height: 56
+                  radius: 28
+                  bg_color: col_light_bg
+                  bg_opa: COVER
+                  border_width: 2
+                  border_color: 0x262626
+                  shadow_width: 10
+                  shadow_color: 0x262626
+                  shadow_opa: 30%
+                  shadow_spread: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  scroll_dir: NONE
+                  on_click:
+                    - script.execute: toggle_ha_light
+                  widgets:
+                    - image:
+                        src: light_img_dengguang
+                        align: CENTER
+                        clickable: false

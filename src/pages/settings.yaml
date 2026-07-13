@@ -1,0 +1,794 @@
+globals:
+  - id: in_settings_menu
+    type: bool
+    initial_value: 'false'
+  - id: settings_menu_sel
+    type: int
+    initial_value: '0'
+  - id: settings_menu_animating
+    type: bool
+    initial_value: 'false'
+  - id: in_display_timeout
+    type: bool
+    initial_value: 'false'
+  - id: display_timeout_s
+    type: int
+    restore_value: true
+    initial_value: '30'
+  - id: in_menu_timeout
+    type: bool
+    initial_value: 'false'
+  - id: menu_timeout_s
+    type: int
+    restore_value: true
+    initial_value: '60'
+  - id: display_asleep
+    type: bool
+    initial_value: 'false'
+  - id: last_activity_ms
+    type: uint32_t
+    initial_value: '0'
+  - id: touch_woke_display
+    type: bool
+    initial_value: 'false'
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (!id(display_asleep)) {
+            uint32_t elapsed = millis() - id(last_activity_ms);
+            uint32_t display_timeout_ms = (uint32_t)id(display_timeout_s) * 1000;
+            if (elapsed >= display_timeout_ms) {
+              id(sleep_display).execute();
+            }
+          }
+      - lambda: |-
+          bool on_clock = !id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
+                          !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                          !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
+                          !id(in_fridge) && !id(in_timer);
+          if (!on_clock) {
+            uint32_t elapsed = millis() - id(last_activity_ms);
+            uint32_t menu_timeout_ms = (uint32_t)id(menu_timeout_s) * 1000;
+            if (elapsed >= menu_timeout_ms) {
+              id(force_return_home).execute();
+            }
+          }
+
+script:
+  - id: sleep_display
+    then:
+      - light.turn_off: display_backlight
+      - globals.set: {id: display_asleep, value: 'true'}
+      - lambda: 'lv_obj_clear_flag(id(sleep_overlay), LV_OBJ_FLAG_HIDDEN);'
+
+  - id: wake_display
+    then:
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+      - globals.set: {id: display_asleep, value: 'false'}
+      - lambda: |-
+          id(last_activity_ms) = millis();
+          lv_obj_add_flag(id(sleep_overlay), LV_OBJ_FLAG_HIDDEN);
+
+  - id: force_return_home
+    then:
+      - globals.set: {id: in_menu, value: 'false'}
+      - globals.set: {id: in_light, value: 'false'}
+      - globals.set: {id: in_colorpicker, value: 'false'}
+      - globals.set: {id: in_air, value: 'false'}
+      - globals.set: {id: in_music, value: 'false'}
+      - globals.set: {id: in_timer, value: 'false'}
+      - globals.set: {id: in_fridge, value: 'false'}
+      - globals.set: {id: in_lights_menu, value: 'false'}
+      - globals.set: {id: in_ha_light, value: 'false'}
+      - globals.set: {id: in_settings_menu, value: 'false'}
+      - globals.set: {id: in_display_timeout, value: 'false'}
+      - globals.set: {id: in_menu_timeout, value: 'false'}
+      - lambda: 'id(last_activity_ms) = millis();'
+      - lvgl.page.show:
+          id: page_clock
+          animation: MOVE_RIGHT
+
+  - id: open_settings_menu
+    then:
+      - globals.set: {id: in_settings_menu, value: 'true'}
+      - globals.set: {id: in_menu, value: 'false'}
+      - globals.set: {id: settings_menu_sel, value: '0'}
+      - script.execute: refresh_settings_menu
+      - lvgl.page.show:
+          id: page_settings_menu
+          animation: MOVE_LEFT
+
+  - id: close_settings_menu
+    then:
+      - globals.set: {id: in_settings_menu, value: 'false'}
+      - script.execute: open_menu
+
+  - id: settings_menu_scroll_up
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(settings_menu_animating);'
+          then:
+            - globals.set: {id: settings_menu_animating, value: 'true'}
+            - lambda: |-
+                static lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, nullptr);
+                lv_anim_set_values(&a, 0, 100);
+                lv_anim_set_time(&a, 200);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
+                  const int SLOT_N = 5;
+                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+                  const float CY = 120.0f;
+                  const float ARC_CX = 162.0f;
+                  const float R = 98.0f;
+                  auto arc_dy = [](float off) -> float {
+                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+                    const float a = fabsf(off);
+                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+                  };
+
+                  lv_obj_t* slots[5] = {
+                    id(sm_far_up), id(sm_near_up), id(sm_center),
+                    id(sm_near_dn), id(sm_far_dn)
+                  };
+                  lv_obj_t* icons[5] = {
+                    id(sm_far_up_img), id(sm_near_up_img), id(sm_center_img),
+                    id(sm_near_dn_img), id(sm_far_dn_img)
+                  };
+                  lv_obj_t* title_lbls[5] = {
+                    id(sm_far_up_lbl), id(sm_near_up_lbl), id(sm_center_lbl),
+                    id(sm_near_dn_lbl), id(sm_far_dn_lbl)
+                  };
+
+                  const float phase = progress / 100.0f;
+                  int center_sub_opa = 0;
+
+                  for (int i = 0; i < SLOT_N; i++) {
+                    const float off = OFFSETS[i] + phase;
+                    float dy = arc_dy(off);
+                    if (dy > R) dy = R;
+                    if (dy < -R) dy = -R;
+
+                    const float theta = asinf(dy / R);
+                    const float x = ARC_CX - R * cosf(theta);
+                    const float y = CY + R * sinf(theta);
+
+                    float closeness = 1.0f - (fabsf(off) / 2.0f);
+                    if (closeness < 0.0f) closeness = 0.0f;
+                    if (closeness > 1.0f) closeness = 1.0f;
+
+                    const int mix = (int)(closeness * 1000.0f);
+                    int w = 40;
+                    int opa_text = 0;
+                    int opa_bg = 0;
+                    int pill_shift = 0;
+
+                    if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+                    if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+                    if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+                    if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 54);
+                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+                    lv_obj_set_width(slots[i], w);
+                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
+                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
+                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
+                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
+
+                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
+
+                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
+                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
+
+                    if (i == 2) {
+                      center_sub_opa = opa_text;
+                    }
+                  }
+
+                  lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
+                });
+                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                  int n = 2;
+                  id(settings_menu_sel) = ((id(settings_menu_sel) - 1) % n + n) % n;
+                  id(refresh_settings_menu).execute();
+                  id(settings_menu_animating) = false;
+                });
+                lv_anim_start(&a);
+
+  - id: settings_menu_scroll_down
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(settings_menu_animating);'
+          then:
+            - globals.set: {id: settings_menu_animating, value: 'true'}
+            - lambda: |-
+                static lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, nullptr);
+                lv_anim_set_values(&a, 0, 100);
+                lv_anim_set_time(&a, 200);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
+                  const int SLOT_N = 5;
+                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+                  const float CY = 120.0f;
+                  const float ARC_CX = 162.0f;
+                  const float R = 98.0f;
+                  auto arc_dy = [](float off) -> float {
+                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+                    const float a = fabsf(off);
+                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+                  };
+
+                  lv_obj_t* slots[5] = {
+                    id(sm_far_up), id(sm_near_up), id(sm_center),
+                    id(sm_near_dn), id(sm_far_dn)
+                  };
+                  lv_obj_t* icons[5] = {
+                    id(sm_far_up_img), id(sm_near_up_img), id(sm_center_img),
+                    id(sm_near_dn_img), id(sm_far_dn_img)
+                  };
+                  lv_obj_t* title_lbls[5] = {
+                    id(sm_far_up_lbl), id(sm_near_up_lbl), id(sm_center_lbl),
+                    id(sm_near_dn_lbl), id(sm_far_dn_lbl)
+                  };
+
+                  const float phase = progress / 100.0f;
+                  int center_sub_opa = 0;
+
+                  for (int i = 0; i < SLOT_N; i++) {
+                    const float off = OFFSETS[i] - phase;
+                    float dy = arc_dy(off);
+                    if (dy > R) dy = R;
+                    if (dy < -R) dy = -R;
+
+                    const float theta = asinf(dy / R);
+                    const float x = ARC_CX - R * cosf(theta);
+                    const float y = CY + R * sinf(theta);
+
+                    float closeness = 1.0f - (fabsf(off) / 2.0f);
+                    if (closeness < 0.0f) closeness = 0.0f;
+                    if (closeness > 1.0f) closeness = 1.0f;
+
+                    const int mix = (int)(closeness * 1000.0f);
+                    int w = 40;
+                    int opa_text = 0;
+                    int opa_bg = 0;
+                    int pill_shift = 0;
+
+                    if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+                    if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+                    if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+                    if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 64);
+                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+                    lv_obj_set_width(slots[i], w);
+                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
+                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
+                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
+                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
+
+                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
+
+                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
+                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
+
+                    if (i == 2) {
+                      center_sub_opa = opa_text;
+                    }
+                  }
+
+                  lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
+                });
+                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 2;
+                  id(refresh_settings_menu).execute();
+                  id(settings_menu_animating) = false;
+                });
+                lv_anim_start(&a);
+
+  - id: settings_menu_confirm
+    then:
+      - if:
+          condition:
+            lambda: 'return id(settings_menu_sel) == 0;'
+          then:
+            - globals.set: {id: in_settings_menu, value: 'false'}
+            - script.execute: open_display_timeout
+          else:
+            - globals.set: {id: in_settings_menu, value: 'false'}
+            - script.execute: open_menu_timeout
+
+  - id: refresh_settings_menu
+    then:
+      - lambda: |-
+          const int ITEM_N = 2;
+          const int SLOT_N = 5;
+          const float CY = 120.0f;
+          const float ARC_CX = 162.0f;
+          const float R = 98.0f;
+          auto arc_dy = [](float off) -> float {
+            const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+            const float a = fabsf(off);
+            return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+          };
+          const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+
+          static char sub_display[16];
+          static char sub_menu[16];
+          snprintf(sub_display, sizeof(sub_display), "%ds", id(display_timeout_s));
+          snprintf(sub_menu, sizeof(sub_menu), "%ds", id(menu_timeout_s));
+
+          const char* TITLES[2] = {"Display Timeout", "Menu Timeout"};
+          const char* SUBTITLES[2] = {sub_display, sub_menu};
+          const uint32_t ACCENT_COLORS[2] = {0x9CA3AF, 0x38BDF8};
+          const uint32_t PILL_COLORS[2] = {0x1E2024, 0x0F1E2A};
+
+          int sel = id(settings_menu_sel);
+
+          lv_obj_t* slots[5] = {
+            id(sm_far_up), id(sm_near_up), id(sm_center), id(sm_near_dn), id(sm_far_dn)
+          };
+          lv_obj_t* lbls[5] = {
+            id(sm_far_up_lbl), id(sm_near_up_lbl), id(sm_center_lbl), id(sm_near_dn_lbl), id(sm_far_dn_lbl)
+          };
+          lv_obj_t* icons[5] = {
+            id(sm_far_up_img), id(sm_near_up_img), id(sm_center_img), id(sm_near_dn_img), id(sm_far_dn_img)
+          };
+
+          for (int slot = 0; slot < SLOT_N; slot++) {
+            int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+
+            const float off = OFFSETS[slot];
+            float dy = arc_dy(off);
+            if (dy > R) dy = R;
+            if (dy < -R) dy = -R;
+
+            const float theta = asinf(dy / R);
+            const float x = ARC_CX - R * cosf(theta);
+            const float y = CY + R * sinf(theta);
+
+            float closeness = 1.0f - (fabsf(off) / 2.0f);
+            if (closeness < 0.0f) closeness = 0.0f;
+            if (closeness > 1.0f) closeness = 1.0f;
+            const int mix = (int)(closeness * 1000.0f);
+
+            int w = 40;
+            int opa_text = 0;
+            int opa_bg = 0;
+            int pill_shift = 0;
+            if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+            if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+            if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+            if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 54);
+            const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+            lv_obj_set_width(slots[slot], w);
+            lv_obj_set_height(slots[slot], slot == 2 ? 56 : 40);
+            lv_obj_set_style_radius(slots[slot], slot == 2 ? 28 : 20, LV_PART_MAIN);
+
+            if (slot == 2) {
+              lv_obj_set_style_bg_color(slots[slot], lv_color_hex(PILL_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], 128, LV_PART_MAIN);
+              lv_obj_set_style_border_color(slots[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_border_width(slots[slot], 2, LV_PART_MAIN);
+              lv_obj_set_style_border_opa(slots[slot], 255, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(slots[slot], lv_color_hex(0x0D1537), LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], opa_bg, LV_PART_MAIN);
+              lv_obj_set_style_border_width(slots[slot], 0, LV_PART_MAIN);
+            }
+
+            lv_obj_set_pos(slots[slot], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (slot == 2 ? 28.0f : 20.0f)));
+
+            lv_label_set_text(lbls[slot], TITLES[di]);
+            if (slot == 2) {
+              lv_obj_set_style_text_color(lbls[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_text_color(lbls[slot], lv_color_hex(0x232A38), LV_PART_MAIN);
+            }
+            lv_obj_set_style_opa(lbls[slot], slot == 2 ? 255 : opa_text, LV_PART_MAIN);
+            lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
+
+            if (slot == 2) {
+              lv_label_set_text(id(sm_center_sub), SUBTITLES[di]);
+              lv_obj_set_style_text_color(id(sm_center_sub), lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_opa(id(sm_center_sub), 255, LV_PART_MAIN);
+            }
+          }
+
+          const int dot_offsets[2] = {-7, 7};
+          lv_obj_t* sdots[2] = {id(sm_sdot_0), id(sm_sdot_1)};
+          for (int d = 0; d < ITEM_N; d++) {
+            if (d == sel) {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
+              lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
+              lv_obj_set_size(sdots[d], 8, 8);
+              lv_obj_set_style_radius(sdots[d], 0, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(sdots[d], 450, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(0x2A3348), LV_PART_MAIN);
+              lv_obj_set_style_opa(sdots[d], 180, LV_PART_MAIN);
+              lv_obj_set_size(sdots[d], 4, 4);
+              lv_obj_set_style_radius(sdots[d], 2, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(sdots[d], 0, LV_PART_MAIN);
+            }
+          }
+
+          lv_obj_set_style_border_width(id(sm_center), 0, LV_PART_MAIN);
+
+  - id: open_display_timeout
+    then:
+      - globals.set: {id: in_display_timeout, value: 'true'}
+      - script.execute: refresh_display_timeout
+      - lvgl.page.show:
+          id: page_display_timeout
+          animation: MOVE_LEFT
+
+  - id: close_display_timeout
+    then:
+      - globals.set: {id: in_display_timeout, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: display_timeout_up
+    then:
+      - lambda: |-
+          int v = id(display_timeout_s) + 5;
+          if (v > 300) v = 300;
+          id(display_timeout_s) = v;
+      - script.execute: refresh_display_timeout
+
+  - id: display_timeout_down
+    then:
+      - lambda: |-
+          int v = id(display_timeout_s) - 5;
+          if (v < 5) v = 5;
+          id(display_timeout_s) = v;
+      - script.execute: refresh_display_timeout
+
+  - id: refresh_display_timeout
+    then:
+      - lambda: |-
+          static char buf[8];
+          snprintf(buf, sizeof(buf), "%d", id(display_timeout_s));
+          lv_label_set_text(id(lbl_display_timeout_val), buf);
+      - script.execute: refresh_settings_menu
+
+  - id: open_menu_timeout
+    then:
+      - globals.set: {id: in_menu_timeout, value: 'true'}
+      - script.execute: refresh_menu_timeout
+      - lvgl.page.show:
+          id: page_menu_timeout
+          animation: MOVE_LEFT
+
+  - id: close_menu_timeout
+    then:
+      - globals.set: {id: in_menu_timeout, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: menu_timeout_up
+    then:
+      - lambda: |-
+          int v = id(menu_timeout_s) + 5;
+          if (v > 300) v = 300;
+          id(menu_timeout_s) = v;
+      - script.execute: refresh_menu_timeout
+
+  - id: menu_timeout_down
+    then:
+      - lambda: |-
+          int v = id(menu_timeout_s) - 5;
+          if (v < 5) v = 5;
+          id(menu_timeout_s) = v;
+      - script.execute: refresh_menu_timeout
+
+  - id: refresh_menu_timeout
+    then:
+      - lambda: |-
+          static char buf[8];
+          snprintf(buf, sizeof(buf), "%d", id(menu_timeout_s));
+          lv_label_set_text(id(lbl_menu_timeout_val), buf);
+      - script.execute: refresh_settings_menu
+
+lvgl:
+  top_layer:
+    widgets:
+      - obj:
+          id: sleep_overlay
+          align: CENTER
+          width: 240
+          height: 240
+          bg_color: 0x000000
+          bg_opa: TRANSP
+          border_width: 0
+          clickable: true
+          scrollbar_mode: "OFF"
+          hidden: true
+          on_click:
+            - script.execute: wake_display
+
+  pages:
+    - id: page_settings_menu
+      bg_color: col_menu_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_settings_menu
+      widgets:
+        - obj:
+            align: CENTER
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_menu_bg
+            border_width: 0
+            scrollbar_mode: "OFF"
+            pad_all: 0
+            widgets:
+              - obj:
+                  id: sm_far_up
+                  align: TOP_MID
+                  y: 6
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: sm_far_up_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_settings
+                    - label:
+                        id: sm_far_up_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 25%
+
+              - obj:
+                  id: sm_near_up
+                  align: TOP_MID
+                  y: 42
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: sm_near_up_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_settings
+                    - label:
+                        id: sm_near_up_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 50%
+
+              - obj:
+                  id: sm_center
+                  align: TOP_MID
+                  y: 102
+                  width: 168
+                  height: 56
+                  radius: 20
+                  bg_color: col_menu_pill
+                  bg_opa: COVER
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: sm_center_img
+                        align: LEFT_MID
+                        x: 14
+                        src: menu_img_settings
+                    - label:
+                        id: sm_center_lbl
+                        x: 54
+                        y: 6
+                        text_font: font_menu_item
+                        text_color: col_text_pri
+                        width: 106
+                        long_mode: SCROLL_CIRCULAR
+                        text: "Display Timeout"
+                    - label:
+                        id: sm_center_sub
+                        x: 54
+                        y: 30
+                        text_font: font_menu_sub
+                        text_color: col_menu_val
+                        width: 106
+                        long_mode: DOT
+                        text: "30s"
+
+              - obj:
+                  id: sm_near_dn
+                  align: TOP_MID
+                  y: 162
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: sm_near_dn_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_settings
+                    - label:
+                        id: sm_near_dn_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 50%
+
+              - obj:
+                  id: sm_far_dn
+                  align: TOP_MID
+                  y: 198
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: sm_far_dn_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_settings
+                    - label:
+                        id: sm_far_dn_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 25%
+
+              - obj:
+                  id: sm_sdot_0
+                  align: RIGHT_MID
+                  x: -10
+                  y: -7
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: sm_sdot_1
+                  align: RIGHT_MID
+                  x: -10
+                  y: 7
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+
+    - id: page_display_timeout
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_display_timeout
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -40
+                  text: "Display Timeout"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_display_timeout_val
+                  align: CENTER
+                  y: 0
+                  text: "30"
+                  text_font: font_light_big
+                  text_color: 0xFFFFFF
+
+              - label:
+                  align: CENTER
+                  y: 60
+                  text: "seconds"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+    - id: page_menu_timeout
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_menu_timeout
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -40
+                  text: "Menu Timeout"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_menu_timeout_val
+                  align: CENTER
+                  y: 0
+                  text: "60"
+                  text_font: font_light_big
+                  text_color: 0xFFFFFF
+
+              - label:
+                  align: CENTER
+                  y: 60
+                  text: "seconds"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER

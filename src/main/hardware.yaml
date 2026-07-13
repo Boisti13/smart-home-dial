@@ -89,6 +89,21 @@ touchscreen:
     interrupt_pin: GPIO14
     on_touch:
       - lambda: |-
+          id(last_activity_ms) = millis();
+          if (id(display_asleep)) {
+            id(touch_woke_display) = true;
+            id(wake_display).execute();
+          }
+          if (id(swipe_start_x) < 0) {
+            id(swipe_start_x) = touch.x;
+            id(swipe_start_y) = touch.y;
+          }
+          id(swipe_cur_x) = touch.x;
+          id(swipe_cur_y) = touch.y;
+    on_update:
+      - lambda: |-
+          if (touches.empty()) return;
+          auto touch = touches[0];
           if (id(swipe_start_x) < 0) {
             id(swipe_start_x) = touch.x;
             id(swipe_start_y) = touch.y;
@@ -97,6 +112,11 @@ touchscreen:
           id(swipe_cur_y) = touch.y;
     on_release:
       - lambda: |-
+          if (id(touch_woke_display)) {
+            id(touch_woke_display) = false;
+            id(swipe_start_x) = -1;
+            return;
+          }
           int dx = id(swipe_cur_x) - id(swipe_start_x);
           int dy = id(swipe_cur_y) - id(swipe_start_y);
           id(swipe_start_x) = -1;

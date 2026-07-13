@@ -15,7 +15,7 @@ font:
     id: font_menu_sub
     size: 12
     bpp: 4
-    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .-_%/"
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .-_%/\xc2\xb0"
 
 color:
   - id: col_menu_bg
@@ -62,6 +62,11 @@ image:
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
+  - file: src/assets/images/scene.png
+    id: menu_img_settings
+    type: RGB565
+    transparency: alpha_channel
+    resize: 34x34
 globals:
   - id: menu_sel
     type: int
@@ -79,7 +84,7 @@ globals:
 script:
   - id: open_menu
     then:
-      - globals.set: {id: menu_sel, value: '5'}
+      - globals.set: {id: menu_sel, value: '6'}
       - globals.set: {id: in_menu, value: 'true'}
       - script.execute: refresh_menu
       - lvgl.page.show:
@@ -110,7 +115,7 @@ script:
                 lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
                 lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
                   const int SLOT_N = 5;
-                  const int ITEM_N = 6;
+                  const int ITEM_N = 7;
                   const int OFFSETS[5] = {-2, -1, 0, 1, 2};
                   const float CY = 120.0f;
                   const float ARC_CX = 162.0f;
@@ -199,14 +204,14 @@ script:
                   lv_obj_set_style_opa(id(slot_center_sub), center_sub_opa, LV_PART_MAIN);
 
                   // Animate arrow indicator upward
-                  const int dot_offsets[6] = {-35, -21, -7, 7, 21, 35};
+                  const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
                   int from_dot = id(menu_sel);
                   int to_dot = ((from_dot - 1) % ITEM_N + ITEM_N) % ITEM_N;
                   int arrow_y = (int)(dot_offsets[from_dot] + (dot_offsets[to_dot] - dot_offsets[from_dot]) * phase);
                   lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 6;
+                  int n = 7;
                   id(menu_sel) = ((id(menu_sel) - 1) % n + n) % n;
                   id(refresh_menu).execute();
                   id(menu_animating) = false;
@@ -230,7 +235,7 @@ script:
                 lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
                 lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
                   const int SLOT_N = 5;
-                  const int ITEM_N = 6;
+                  const int ITEM_N = 7;
                   const int OFFSETS[5] = {-2, -1, 0, 1, 2};
                   const float CY = 120.0f;
                   const float ARC_CX = 162.0f;
@@ -319,14 +324,14 @@ script:
                   lv_obj_set_style_opa(id(slot_center_sub), center_sub_opa, LV_PART_MAIN);
 
                   // Animate arrow indicator downward
-                  const int dot_offsets[6] = {-35, -21, -7, 7, 21, 35};
+                  const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
                   int from_dot = id(menu_sel);
                   int to_dot = (from_dot + 1) % ITEM_N;
                   int arrow_y = (int)(dot_offsets[from_dot] + (dot_offsets[to_dot] - dot_offsets[from_dot]) * phase);
                   lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(menu_sel) = (id(menu_sel) + 1) % 6;
+                  id(menu_sel) = (id(menu_sel) + 1) % 7;
                   id(refresh_menu).execute();
                   id(menu_animating) = false;
                 });
@@ -339,16 +344,17 @@ script:
           int sel = id(menu_sel);
           if      (sel == 0) { id(open_timer).execute(); }
           else if (sel == 1) { id(open_fridge).execute(); }
-          else if (sel == 2) { id(open_light).execute(); }
+          else if (sel == 2) { id(open_lights_menu).execute(); }
           else if (sel == 3) { id(open_air).execute(); }
           else if (sel == 4) { id(open_music).execute(); }
-          else if (sel == 5) { id(close_menu).execute(); }
+          else if (sel == 5) { id(open_settings_menu).execute(); }
+          else if (sel == 6) { id(close_menu).execute(); }
           else               { id(close_menu).execute(); }
 
   - id: refresh_menu
     then:
       - lambda: |-
-          const int ITEM_N = 6;
+          const int ITEM_N = 7;
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -372,34 +378,59 @@ script:
           };
           const int OFFSETS[5] = {-2, -1, 0, 1, 2};
 
-          const char* TITLES[6]    = {"Timer", "Fridge", "Lights", "AC", "Music", "Home"};
-          const char* SUBTITLES[6] = {"Living Rm - Auto", "Living Rm - Off",
-                                      "Living Rm - 75%",  "Living Rm - 24C",
-                                      "Living Rm - Off",  "Back to Main"};
-          const lv_img_dsc_t* IMGS[6] = {
+          static char ac_menu_sub[24];
+          {
+            const char* fan_name;
+            if (!id(air_btn_power_active)) {
+              fan_name = "OFF";
+            } else {
+              switch (id(air_fan_speed)) {
+                case 1: fan_name = "Low"; break;
+                case 2: fan_name = "Medium"; break;
+                case 3: fan_name = "High"; break;
+                default: fan_name = "Auto"; break;
+              }
+            }
+            float ct = id(ha_air_current_temp).state;
+            if (isnan(ct)) {
+              snprintf(ac_menu_sub, sizeof(ac_menu_sub), "%s", fan_name);
+            } else {
+              snprintf(ac_menu_sub, sizeof(ac_menu_sub), "%s - %.0f\xc2\xb0", fan_name, ct);
+            }
+          }
+
+          const char* TITLES[7]    = {"Timer", "Fridge", "Lights", "AC", "Music", "Settings", "Home"};
+          const char* SUBTITLES[7] = {"Living Rm - Auto", "Living Rm - Off",
+                                      "Living Rm - 75%",  ac_menu_sub,
+                                      "Living Rm - Off",  "",
+                                      "Back to Main"};
+          const lv_img_dsc_t* IMGS[7] = {
             id(menu_img_timer)->get_lv_img_dsc(),
             id(menu_img_fridge)->get_lv_img_dsc(),
             id(menu_img_light)->get_lv_img_dsc(),
             id(menu_img_ac)->get_lv_img_dsc(),
             id(menu_img_music)->get_lv_img_dsc(),
+            id(menu_img_settings)->get_lv_img_dsc(),
             id(menu_img_home)->get_lv_img_dsc()
           };
-          // Per-item accent colors: Timer, Fridge, Lights, AC, Music, Home
-          const uint32_t ACCENT_COLORS[6] = {
-            0xFB923C,  // Timer   - orange
-            0x4ADE80,  // Fridge  - green
-            0xFDC003,  // Lights  - yellow
-            0x5ABBFD,  // AC      - ice blue
-            0xA792E8,  // Music   - purple
-            0x576BFE   // Home    - blue
+          // Per-item accent colors: Timer, Fridge, Lights, AC, Music, Settings, Home
+          const uint32_t ACCENT_COLORS[7] = {
+            0xFB923C,  // Timer    - orange
+            0x4ADE80,  // Fridge   - green
+            0xFDC003,  // Lights   - yellow
+            0x5ABBFD,  // AC       - ice blue
+            0xA792E8,  // Music    - purple
+            0x9CA3AF,  // Settings - silver
+            0x576BFE   // Home     - blue
           };
           // Pill bg: darker version of accent
-          const uint32_t PILL_COLORS[6] = {
+          const uint32_t PILL_COLORS[7] = {
             0x2A1200,  // Timer
             0x0A2A14,  // Fridge
             0x2A1E00,  // Lights
             0x001A2A,  // AC
             0x150A2A,  // Music
+            0x1E2024,  // Settings
             0x0D1537   // Home
           };
           int sel = id(menu_sel);
@@ -501,9 +532,9 @@ script:
 
           // Indicator dots: selected = triangle shape (wide-bottom trapezoid via radius=0)
           // Use width to simulate triangle: selected wider at bottom
-          const int dot_offsets[6] = {-35, -21, -7, 7, 21, 35};
-          lv_obj_t* sdots[6] = {
-            id(sdot_0), id(sdot_1), id(sdot_2), id(sdot_3), id(sdot_4), id(sdot_5)
+          const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
+          lv_obj_t* sdots[7] = {
+            id(sdot_0), id(sdot_1), id(sdot_2), id(sdot_3), id(sdot_4), id(sdot_5), id(sdot_6)
           };
           for (int d = 0; d < ITEM_N; d++) {
             if (d == sel) {
@@ -650,7 +681,7 @@ lvgl:
                               text_font: font_menu_item
                               text_color: col_text_pri
                               width: 106
-                              long_mode: DOT
+                              long_mode: SCROLL_CIRCULAR
                               text: "Scene"
                           - label:
                               id: slot_center_sub
@@ -737,7 +768,7 @@ lvgl:
                   id: sdot_0
                   align: RIGHT_MID
                   x: -10
-                  y: -35
+                  y: -42
                   width: 5
                   height: 5
                   radius: 3
@@ -750,7 +781,7 @@ lvgl:
                   id: sdot_1
                   align: RIGHT_MID
                   x: -10
-                  y: -21
+                  y: -28
                   width: 5
                   height: 5
                   radius: 3
@@ -763,20 +794,7 @@ lvgl:
                   id: sdot_2
                   align: RIGHT_MID
                   x: -10
-                  y: -7
-                  width: 5
-                  height: 5
-                  radius: 3
-                  bg_color: col_menu_accent
-                  bg_opa: COVER
-                  border_width: 0
-                  clickable: false
-                  scrollbar_mode: "OFF"
-              - obj:
-                  id: sdot_3
-                  align: RIGHT_MID
-                  x: -10
-                  y: 7
+                  y: -14
                   width: 5
                   height: 5
                   radius: 3
@@ -786,10 +804,23 @@ lvgl:
                   clickable: false
                   scrollbar_mode: "OFF"
               - obj:
+                  id: sdot_3
+                  align: RIGHT_MID
+                  x: -10
+                  y: 0
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_accent
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
                   id: sdot_4
                   align: RIGHT_MID
                   x: -10
-                  y: 21
+                  y: 14
                   width: 5
                   height: 5
                   radius: 3
@@ -802,7 +833,20 @@ lvgl:
                   id: sdot_5
                   align: RIGHT_MID
                   x: -10
-                  y: 35
+                  y: 28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: sdot_6
+                  align: RIGHT_MID
+                  x: -10
+                  y: 42
                   width: 5
                   height: 5
                   radius: 3

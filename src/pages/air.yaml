@@ -92,7 +92,7 @@ globals:
     initial_value: '0'    # 0=temp, 1=fan speed
   - id: air_fan_speed
     type: int
-    initial_value: '3'    # 1-5
+    initial_value: '2'    # 1=low 2=medium 3=high 4=auto
   - id: air_btn_power_active
     type: bool
     initial_value: 'true'
@@ -132,6 +132,19 @@ text_sensor:
     entity_id: ${climate_entity}
     on_value:
       - lambda: 'id(air_btn_power_active) = (x != "off");'
+      - script.execute: refresh_air
+
+  - platform: homeassistant
+    id: ha_air_fan_mode
+    entity_id: ${climate_entity}
+    attribute: fan_mode
+    on_value:
+      - lambda: |-
+          std::string m = x;
+          if (m == "low") id(air_fan_speed) = 1;
+          else if (m == "medium") id(air_fan_speed) = 2;
+          else if (m == "high") id(air_fan_speed) = 3;
+          else id(air_fan_speed) = 4;  // auto
       - script.execute: refresh_air
 
 script:
@@ -188,8 +201,19 @@ script:
     then:
       - lambda: |-
           int v = id(air_fan_speed) + 1;
-          if (v > 5) v = 5;
+          if (v > 4) v = 4;
           id(air_fan_speed) = v;
+      - homeassistant.service:
+          service: climate.set_fan_mode
+          data:
+            entity_id: ${climate_entity}
+            fan_mode: !lambda |-
+              switch (id(air_fan_speed)) {
+                case 1: return std::string("low");
+                case 2: return std::string("medium");
+                case 3: return std::string("high");
+                default: return std::string("auto");
+              }
       - script.execute: refresh_air
 
   - id: air_fan_down
@@ -198,6 +222,17 @@ script:
           int v = id(air_fan_speed) - 1;
           if (v < 1) v = 1;
           id(air_fan_speed) = v;
+      - homeassistant.service:
+          service: climate.set_fan_mode
+          data:
+            entity_id: ${climate_entity}
+            fan_mode: !lambda |-
+              switch (id(air_fan_speed)) {
+                case 1: return std::string("low");
+                case 2: return std::string("medium");
+                case 3: return std::string("high");
+                default: return std::string("auto");
+              }
       - script.execute: refresh_air
 
   - id: refresh_air
@@ -237,16 +272,10 @@ script:
           lv_obj_set_style_border_color(id(btn_air_swing), lv_color_hex(0x00D7FF), LV_PART_MAIN);
 
           int fs = id(air_fan_speed);
-          lv_obj_set_style_arc_color(id(fan_seg_1), lv_color_hex(0xFFFFFF), LV_PART_INDICATOR);
-          lv_obj_set_style_arc_color(id(fan_seg_2), lv_color_hex(0xFFFFFF), LV_PART_INDICATOR);
-          lv_obj_set_style_arc_color(id(fan_seg_3), lv_color_hex(0xFFFFFF), LV_PART_INDICATOR);
-          lv_obj_set_style_arc_color(id(fan_seg_4), lv_color_hex(0xFFFFFF), LV_PART_INDICATOR);
-          lv_obj_set_style_arc_color(id(fan_seg_5), lv_color_hex(0xFFFFFF), LV_PART_INDICATOR);
           lv_obj_set_style_arc_opa(id(fan_seg_1), fs >= 1 ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
           lv_obj_set_style_arc_opa(id(fan_seg_2), fs >= 2 ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
           lv_obj_set_style_arc_opa(id(fan_seg_3), fs >= 3 ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
           lv_obj_set_style_arc_opa(id(fan_seg_4), fs >= 4 ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
-          lv_obj_set_style_arc_opa(id(fan_seg_5), fs >= 5 ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
 
 lvgl:
   pages:
@@ -353,7 +382,7 @@ lvgl:
                   arc_width: 4
                   adjustable: false
                   clickable: false
-                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}
+                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}  # low - white
                   knob: {bg_opa: TRANSP, border_width: 0, width: 0, height: 0}
 
               - arc:
@@ -372,7 +401,7 @@ lvgl:
                   arc_width: 4
                   adjustable: false
                   clickable: false
-                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}
+                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}  # medium - white
                   knob: {bg_opa: TRANSP, border_width: 0, width: 0, height: 0}
 
               - arc:
@@ -391,7 +420,7 @@ lvgl:
                   arc_width: 4
                   adjustable: false
                   clickable: false
-                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}
+                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}  # high - white
                   knob: {bg_opa: TRANSP, border_width: 0, width: 0, height: 0}
 
               - arc:
@@ -410,26 +439,7 @@ lvgl:
                   arc_width: 4
                   adjustable: false
                   clickable: false
-                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}
-                  knob: {bg_opa: TRANSP, border_width: 0, width: 0, height: 0}
-
-              - arc:
-                  id: fan_seg_5
-                  x: 10
-                  y: 10
-                  width: 220
-                  height: 220
-                  start_angle: 19
-                  end_angle: 26
-                  min_value: 0
-                  max_value: 100
-                  value: 100
-                  arc_color: 0x454545
-                  arc_opa: COVER
-                  arc_width: 4
-                  adjustable: false
-                  clickable: false
-                  indicator: {arc_color: 0xFFFFFF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}
+                  indicator: {arc_color: 0x2E86FF, arc_width: 4, arc_opa: TRANSP, arc_rounded: true}  # auto - blue
                   knob: {bg_opa: TRANSP, border_width: 0, width: 0, height: 0}
 
               - label:
@@ -502,7 +512,7 @@ lvgl:
                         service: climate.set_hvac_mode
                         data:
                           entity_id: ${climate_entity}
-                          hvac_mode: !lambda 'return id(air_btn_power_active) ? std::string("auto") : std::string("off");'
+                          hvac_mode: !lambda 'return id(air_btn_power_active) ? std::string("cool") : std::string("off");'
                     - script.execute: refresh_air
                   widgets:
                     - image:
