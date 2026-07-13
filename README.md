@@ -81,7 +81,8 @@ m5dial-smart-button/
 |-- src/
 |   |-- main/
 |   |   |-- hardware.yaml        # M5Dial pins, display, touch, RTC, power hold
-|   |   `-- entities.yaml        # Home Assistant entity IDs
+|   |   |-- entities.yaml        # Home Assistant entity IDs
+|   |   `-- globals.yaml         # User-tunable values: scroll speed, default timeouts
 |   |-- pages/                   # One LVGL page per feature
 |   |   |-- ha_lights.yaml       # Lights submenu + per-light on/off/brightness page
 |   |   `-- settings.yaml        # Settings submenu, timeouts, backlight sleep/wake
@@ -195,7 +196,11 @@ The Settings submenu (`src/pages/settings.yaml`) has two adjustable values, both
 - **Display Timeout** turns off the backlight after this many seconds of inactivity. The first touch or encoder turn afterward only wakes the screen back up — it is swallowed and not treated as a normal button press or menu scroll.
 - **Menu Timeout** automatically returns to the home/clock screen after this many seconds of inactivity, no matter how deep in the menus you are.
 
-Both timers share the same activity tracker, which resets on any touch or encoder input anywhere in the UI. Default values are 30s (display) and 60s (menu); adjust the range/step in the `display_timeout_up`/`down` and `menu_timeout_up`/`down` scripts if 5–300 seconds in steps of 5 does not suit you.
+Both timers share the same activity tracker, which resets on any touch or encoder input anywhere in the UI. Their default values (30s and 60s) live in `src/main/globals.yaml` as `display_timeout_s`/`menu_timeout_s`; adjust the range/step in the `display_timeout_up`/`down` and `menu_timeout_up`/`down` scripts in `src/pages/settings.yaml` if 5–300 seconds in steps of 5 does not suit you.
+
+## Notes about user-tunable globals
+
+`src/main/globals.yaml` collects the small set of values you're most likely to want to change without hunting through page files: the Display/Menu Timeout defaults above, and `scroll_anim_speed` (pixels/second for the rolling/marquee text used on menu tiles whose name is too long to fit — default 20, LVGL's own default is 25). Any label anywhere in the UI can reuse `id(scroll_anim_speed)` the same way rather than hardcoding its own speed.
 
 ## Notes about battery power
 
@@ -225,7 +230,8 @@ Most people will need to edit only these files:
 - `src/pages/music.yaml` if you want to customize the music UI.
 - `src/pages/air.yaml` if your AC's `hvac_mode`/`fan_mode` strings differ from `cool`/`off`/`auto`/`low`/`medium`/`high`.
 - `src/pages/ha_lights.yaml` and `src/pages/menu.yaml` for the Lights submenu's entities and display names.
-- `src/pages/settings.yaml` for the default/min/max Display Timeout and Menu Timeout values.
+- `src/main/globals.yaml` for the default Display/Menu Timeout values and the rolling-text scroll speed.
+- `src/pages/settings.yaml` for the min/max/step bounds of the Display Timeout and Menu Timeout adjustments.
 
 ## License
 

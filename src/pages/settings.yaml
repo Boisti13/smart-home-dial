@@ -11,17 +11,9 @@ globals:
   - id: in_display_timeout
     type: bool
     initial_value: 'false'
-  - id: display_timeout_s
-    type: int
-    restore_value: true
-    initial_value: '30'
   - id: in_menu_timeout
     type: bool
     initial_value: 'false'
-  - id: menu_timeout_s
-    type: int
-    restore_value: true
-    initial_value: '60'
   - id: display_asleep
     type: bool
     initial_value: 'false'

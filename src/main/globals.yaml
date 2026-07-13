@@ -1,0 +1,12 @@
+globals:
+  - id: scroll_anim_speed
+    type: int
+    initial_value: '20'   # px/sec for rolling/marquee label text (LVGL default is 25)
+  - id: display_timeout_s
+    type: int
+    restore_value: true
+    initial_value: '30'   # seconds of inactivity before the backlight turns off
+  - id: menu_timeout_s
+    type: int
+    restore_value: true
+    initial_value: '60'   # seconds of inactivity before auto-returning to the home screen

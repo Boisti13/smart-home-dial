@@ -1,6 +1,7 @@
 packages:
   hardware:    !include src/main/hardware.yaml
   entities:    !include src/main/entities.yaml
+  globals:     !include src/main/globals.yaml
   load_page:   !include src/pages/load.yaml
   clock_page:  !include src/pages/main.yaml
   menu_page:   !include src/pages/menu.yaml
@@ -25,6 +26,10 @@ esphome:
         - light.turn_on:
             id: display_backlight
             brightness: 100%
+        - lambda: |-
+            lv_obj_set_style_anim_speed(id(slot_center_lbl), id(scroll_anim_speed), LV_PART_MAIN);
+            lv_obj_set_style_anim_speed(id(lm_center_lbl), id(scroll_anim_speed), LV_PART_MAIN);
+            lv_obj_set_style_anim_speed(id(sm_center_lbl), id(scroll_anim_speed), LV_PART_MAIN);
         - script.execute: update_loading_page
 
 esp32:
