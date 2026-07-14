@@ -9,6 +9,7 @@
 [![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.3.3-blue?style=flat-square&logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/Platform-ESP32--S3-red?style=flat-square&logo=espressif)](https://www.espressif.com/)
 [![Display](https://img.shields.io/badge/Display-GC9A01A%20240x240-purple?style=flat-square)](#hardware)
+[![Version](https://img.shields.io/badge/Version-1.3.0-orange?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#license)
 
 </div>
@@ -27,10 +28,11 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 - Navigate with the rotary encoder, touch gestures, and the front button. From the home screen, swiping left or rotating past one detent opens the main menu.
 - Control the built-in LED ring with brightness, color, and preset color flows.
 - Control multiple Home Assistant lights/switches from a scrollable Lights submenu (on/off and brightness).
+- Control per-room radiators (climate entities) from a Radiators submenu, with a live open/closed window indicator per room where a contact sensor is configured.
 - Adjust an air conditioner entity from Home Assistant, including target temperature, power, and fan speed (auto/low/medium/high).
 - Show a music page with playback buttons, volume, progress, and album art.
-- Run a simple countdown timer.
-- Show a small fridge/food status page.
+- Run a countdown timer with a rotary-adjustable duration and an audible alarm at zero (cancelable by touch or encoder rotation, with a 60s auto-stop).
+- Toggle the buzzer on/off from Settings if you'd rather have a silent timer.
 - Adjust display sleep and idle return-to-home timeouts from a Settings submenu; the screen dims automatically and the first touch/turn after sleep only wakes it.
 - Keep the device alive on battery power on M5Dial V1.1 by enabling the power-hold pin.
 
@@ -48,11 +50,13 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 | Clock | Time, date, weather, humidity, AQI, pressure, and wind speed |
 | Menu | Circular page navigation for the small round screen |
 | Lights | Submenu listing the onboard LED ring ("Dial Ring") plus your Home Assistant lights/switches; each opens its own simple on/off + brightness page (the LED ring keeps its full color/effects page) |
+| Radiators | Submenu for five rooms (Kitchen, Bedroom, Arthur, Living Room, Bathroom), each with its own climate control page (target temperature, power) and a window open/closed icon where a contact sensor is configured |
 | AC | Target temperature, power, and fan speed (auto/low/medium/high) control; swing is a local UI toggle only |
 | Music | SendSpin media state, cover art, progress, volume, and transport controls |
-| Fridge | Small food freshness/status cards |
-| Timer | Countdown timer with rotary adjustment |
-| Settings | Submenu for Display Timeout (backlight sleep) and Menu Timeout (idle return to the home screen) |
+| Timer | Countdown timer with rotary adjustment and an audible alarm at zero |
+| Settings | Submenu for Display Timeout (backlight sleep), Menu Timeout (idle return to the home screen), and a Buzzer on/off toggle |
+
+The Fridge page (small food freshness/status cards) still exists in `src/pages/fridge.yaml` but is currently disabled/commented out of `dial.yaml`; see "Project structure" below.
 
 ## Hardware
 
@@ -75,17 +79,20 @@ Main parts used by the project:
 ```text
 m5dial-smart-button/
 |-- dial.yaml                    # ESPHome entry point
+|-- CHANGELOG.md                 # Version history
 |-- secrets.example.yaml         # Copy this to secrets.yaml
 |-- requirements.txt             # ESPHome version used for this project
 |-- THIRD_PARTY_NOTICES.md        # Third-party code/font/icon notes
 |-- src/
 |   |-- main/
-|   |   |-- hardware.yaml        # M5Dial pins, display, touch, RTC, power hold
+|   |   |-- hardware.yaml        # M5Dial pins, display, touch, RTC, power hold, buzzer/rtttl
 |   |   |-- entities.yaml        # Home Assistant entity IDs
-|   |   `-- globals.yaml         # User-tunable values: scroll speed, default timeouts
+|   |   `-- globals.yaml         # User-tunable values: scroll speed, timeouts, buzzer on/off
 |   |-- pages/                   # One LVGL page per feature
 |   |   |-- ha_lights.yaml       # Lights submenu + per-light on/off/brightness page
-|   |   `-- settings.yaml        # Settings submenu, timeouts, backlight sleep/wake
+|   |   |-- radiators.yaml       # Radiators submenu + per-room climate control page
+|   |   |-- fridge.yaml          # Fridge page (currently disabled, not included from dial.yaml)
+|   |   `-- settings.yaml        # Settings submenu: timeouts, buzzer toggle, backlight sleep/wake
 |   `-- assets/                  # Fonts and small image assets
 |-- components/                  # Local ESPHome components, including SendSpin
 |-- hardware/                    # 3D-printable enclosure files
@@ -143,9 +150,20 @@ substitutions:
   light_living_entity: light.your_light_4
   light_test_strip_entity: light.your_light_5
   switch_test_entity: switch.your_switch
+  radiator_kitchen_entity: climate.your_kitchen_radiator
+  radiator_bedroom_entity: climate.your_bedroom_radiator
+  radiator_arthur_entity: climate.your_arthur_radiator
+  radiator_living_entity: climate.your_living_room_radiator
+  radiator_bathroom_entity: climate.your_bathroom_radiator
+  window_kitchen_entity: binary_sensor.your_kitchen_window_contact
+  window_bedroom_entity: binary_sensor.your_bedroom_window_contact
+  window_arthur_entity: binary_sensor.your_arthur_window_contact
+  window_living_entity: binary_sensor.your_living_room_window_contact
 ```
 
 You can find these entity IDs in Home Assistant under **Developer Tools -> States**.
+
+The Radiators submenu is fixed at five rooms (Kitchen, Bedroom, Arthur, Living Room, Bathroom). The window indicator is optional per room — Bathroom intentionally has no `window_*_entity` substitution and never shows the indicator; if a room has no contact sensor, point it at any `binary_sensor` you don't mind being ignored, or see "Notes about Radiators" below for how to remove a room's indicator entirely. Room names are hardcoded in `src/pages/radiators.yaml` and `src/pages/menu.yaml` — edit the `NAMES`/`TITLES` arrays there to match your own rooms.
 
 The Lights submenu is fixed at five `light.*` entities plus one `switch.*` entity (on/off only, no brightness). If you have fewer real lights than that, point the unused substitutions at any entity you don't mind seeing greyed out, or see "Notes about the Lights submenu" below for how to change the count. The display names shown on the Dial ("Kitchen", "Bed Underglow", etc.) are hardcoded in `src/pages/ha_lights.yaml` and `src/pages/menu.yaml` — edit the `TITLES`/`NAMES` arrays there to match your own naming.
 
@@ -183,24 +201,39 @@ The power button toggles between `hvac_mode: cool` and `hvac_mode: off`, and the
 
 The home screen's AC menu tile and the Lights submenu's per-light tiles read their current on/off state directly from Home Assistant, so they stay in sync even if the AC or a light is changed from elsewhere.
 
+## Notes about Radiators
+
+The Radiators submenu (`src/pages/radiators.yaml`) lists five rooms, each with its own page for target temperature (`climate.set_temperature`) and power (`climate.set_hvac_mode`, toggling between `heat` and `off` — edit the `radiator_toggle_power` script if your radiator integration uses different `hvac_mode` strings).
+
+Each room can optionally show a small window icon next to the room name, driven by a `binary_sensor` contact sensor: a plain frame icon (with the cross panes) means closed, a plain frame without the cross means open. A room without a `window_*_entity` substitution (Bathroom, by default) simply never shows the icon. The binary sensors use `trigger_on_initial_state: true` so the icon reflects the sensor's real state immediately after a reboot/reflash, not just after the next state change — worth keeping if you copy this pattern elsewhere, since ESPHome's default behavior only fires `on_state` automations on state *changes*, not on the initial value pushed from Home Assistant on connect.
+
+To change which rooms appear or how many there are, update the `radiator_*_entity`/`window_*_entity` substitutions in `src/main/entities.yaml`, the `binary_sensor`/`text_sensor`/`sensor` blocks and `ENTITY_IDS`/`NAMES` arrays in `src/pages/radiators.yaml`, and the `TITLES`/`ACCENT_COLORS`/`PILL_COLORS` arrays in `src/pages/radiators.yaml` and `src/pages/menu.yaml`. Adding or removing a room means updating the item count in the submenu's carousel code too.
+
+## Notes about the Timer and Buzzer
+
+The Timer page plays an alarm tune through the onboard buzzer (`rtttl:` component) when the countdown reaches zero, repeating until dismissed or until 60 seconds pass (auto-stop). Touching the screen or turning the encoder while the alarm is active cancels it and resets the timer back to its editable state.
+
+The Buzzer entry in Settings is a simple on/off toggle (`buzzer_enabled` in `src/main/globals.yaml`, persisted across reboots). When disabled, the timer alarm is silently skipped instead of playing. Volume control was attempted and dropped — the RTTTL component re-applies its own gain on every note, overriding any manual output-level change — so this is enable/disable only.
+
 ## Notes about the Lights submenu
 
 The Lights submenu (`src/pages/ha_lights.yaml`) lists the onboard LED ring ("Dial Ring") plus five `light.*` entities and one `switch.*` entity from Home Assistant. Unlike the LED ring, these Home Assistant lights only get a simple on/off + brightness page — no color picker or effects, since not every bulb supports RGB.
 
 To change which entities appear or how many there are, you need to touch three places consistently: the `light_*_entity`/`switch_*_entity` substitutions in `src/main/entities.yaml`, the `ENTITY_IDS` arrays and per-entity `sensor`/`text_sensor` blocks in `src/pages/ha_lights.yaml`, and the `NAMES`/`TITLES` display-name arrays in `src/pages/ha_lights.yaml` and `src/pages/menu.yaml`. Adding or removing an entity means updating the item count (`ITEM_N`) in the submenu's carousel code too.
 
-## Notes about Settings (Display Timeout / Menu Timeout)
+## Notes about Settings (Display Timeout / Menu Timeout / Buzzer)
 
-The Settings submenu (`src/pages/settings.yaml`) has two adjustable values, both in seconds and both persisted across reboots:
+The Settings submenu (`src/pages/settings.yaml`) has three entries:
 
 - **Display Timeout** turns off the backlight after this many seconds of inactivity. The first touch or encoder turn afterward only wakes the screen back up — it is swallowed and not treated as a normal button press or menu scroll.
 - **Menu Timeout** automatically returns to the home/clock screen after this many seconds of inactivity, no matter how deep in the menus you are.
+- **Buzzer** toggles all buzzer sounds (currently just the timer alarm) on or off.
 
-Both timers share the same activity tracker, which resets on any touch or encoder input anywhere in the UI. Their default values (30s and 60s) live in `src/main/globals.yaml` as `display_timeout_s`/`menu_timeout_s`; adjust the range/step in the `display_timeout_up`/`down` and `menu_timeout_up`/`down` scripts in `src/pages/settings.yaml` if 5–300 seconds in steps of 5 does not suit you.
+Display Timeout and Menu Timeout are both in seconds and persisted across reboots, and share the same activity tracker, which resets on any touch or encoder input anywhere in the UI. Their default values (30s and 60s) live in `src/main/globals.yaml` as `display_timeout_s`/`menu_timeout_s`; adjust the range/step in the `display_timeout_up`/`down` and `menu_timeout_up`/`down` scripts in `src/pages/settings.yaml` if 5–300 seconds in steps of 5 does not suit you.
 
 ## Notes about user-tunable globals
 
-`src/main/globals.yaml` collects the small set of values you're most likely to want to change without hunting through page files: the Display/Menu Timeout defaults above, and `scroll_anim_speed` (pixels/second for the rolling/marquee text used on menu tiles whose name is too long to fit — default 20, LVGL's own default is 25). Any label anywhere in the UI can reuse `id(scroll_anim_speed)` the same way rather than hardcoding its own speed.
+`src/main/globals.yaml` collects the small set of values you're most likely to want to change without hunting through page files: the Display/Menu Timeout defaults above, `buzzer_enabled` (persisted on/off state for the Buzzer setting), and `scroll_anim_speed` (pixels/second for the rolling/marquee text used on menu tiles whose name is too long to fit — default 20, LVGL's own default is 25). Any label anywhere in the UI can reuse `id(scroll_anim_speed)` the same way rather than hardcoding its own speed.
 
 ## Notes about battery power
 
@@ -215,6 +248,8 @@ M5Dial V1.1 needs the hold pin to stay enabled when running from battery. This p
 - **AC power/temperature/fan calls do nothing in Home Assistant**: check Settings -> Devices & Services -> ESPHome -> your device for "Allow the device to perform Home Assistant actions", and confirm your `hvac_mode`/`fan_mode` strings actually exist on the entity (see "Notes about AC controls").
 - **Uploading with `esphome upload` seems to ignore your latest edits**: run `esphome compile dial.yaml` first — `upload` alone reflashes whatever binary is already built, it does not recompile.
 - **Wrong or missing Lights submenu entity**: change the matching `light_*_entity`/`switch_*_entity` substitution in `src/main/entities.yaml` (see "Notes about the Lights submenu").
+- **Window indicator stuck on closed after a reflash**: make sure the room's `binary_sensor` config keeps `trigger_on_initial_state: true` (see "Notes about Radiators") — without it, the icon only updates on the sensor's next state change, not on the value already pushed at boot.
+- **Buzzer volume**: there is no volume control, only on/off — see "Notes about the Timer and Buzzer".
 - **Music page shows unavailable**: choose the real player entity, not the Dial entity itself.
 - **Album art causes reboot**: keep the artwork small and do not increase LVGL memory use too much.
 - **First build cannot download fonts**: connect to the internet once so ESPHome can fetch Google Fonts, or replace `gfonts://` fonts with local font files.
@@ -230,7 +265,8 @@ Most people will need to edit only these files:
 - `src/pages/music.yaml` if you want to customize the music UI.
 - `src/pages/air.yaml` if your AC's `hvac_mode`/`fan_mode` strings differ from `cool`/`off`/`auto`/`low`/`medium`/`high`.
 - `src/pages/ha_lights.yaml` and `src/pages/menu.yaml` for the Lights submenu's entities and display names.
-- `src/main/globals.yaml` for the default Display/Menu Timeout values and the rolling-text scroll speed.
+- `src/pages/radiators.yaml` and `src/pages/menu.yaml` for the Radiators submenu's rooms, entities, and window sensors.
+- `src/main/globals.yaml` for the default Display/Menu Timeout values, the buzzer on/off default, and the rolling-text scroll speed.
 - `src/pages/settings.yaml` for the min/max/step bounds of the Display Timeout and Menu Timeout adjustments.
 
 ## License

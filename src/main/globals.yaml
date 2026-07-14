@@ -10,3 +10,7 @@ globals:
     type: int
     restore_value: true
     initial_value: '60'   # seconds of inactivity before auto-returning to the home screen
+  - id: buzzer_enabled
+    type: bool
+    restore_value: true
+    initial_value: 'true'   # global on/off switch for all buzzer sounds

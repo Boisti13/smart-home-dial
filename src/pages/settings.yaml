@@ -1,3 +1,10 @@
+image:
+  - file: src/assets/images/speaker.png
+    id: menu_img_speaker
+    type: RGB565
+    transparency: alpha_channel
+    resize: 34x34
+
 globals:
   - id: in_settings_menu
     type: bool
@@ -14,6 +21,9 @@ globals:
   - id: in_menu_timeout
     type: bool
     initial_value: 'false'
+  - id: in_buzzer_volume
+    type: bool
+    initial_value: 'false'
   - id: display_asleep
     type: bool
     initial_value: 'false'
@@ -23,12 +33,16 @@ globals:
   - id: touch_woke_display
     type: bool
     initial_value: 'false'
+  - id: wake_cooldown_until_ms
+    type: uint32_t
+    initial_value: '0'
 
 interval:
   - interval: 1s
     then:
       - lambda: |-
-          if (!id(display_asleep)) {
+          bool timer_busy = id(in_timer) && (id(timer_running) || id(timer_alarm_active));
+          if (!timer_busy && !id(display_asleep)) {
             uint32_t elapsed = millis() - id(last_activity_ms);
             uint32_t display_timeout_ms = (uint32_t)id(display_timeout_s) * 1000;
             if (elapsed >= display_timeout_ms) {
@@ -36,10 +50,12 @@ interval:
             }
           }
       - lambda: |-
-          bool on_clock = !id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
+          bool timer_busy = id(in_timer) && (id(timer_running) || id(timer_alarm_active));
+          bool on_clock = timer_busy || (!id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
                           !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                          !id(in_radiators_menu) && !id(in_radiator_room) &&
                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
-                          !id(in_fridge) && !id(in_timer);
+                          !id(in_buzzer_volume) && !id(in_timer));
           if (!on_clock) {
             uint32_t elapsed = millis() - id(last_activity_ms);
             uint32_t menu_timeout_ms = (uint32_t)id(menu_timeout_s) * 1000;
@@ -53,6 +69,7 @@ script:
     then:
       - light.turn_off: display_backlight
       - globals.set: {id: display_asleep, value: 'true'}
+      - globals.set: {id: home_encoder_step_accum, value: '0'}
       - lambda: 'lv_obj_clear_flag(id(sleep_overlay), LV_OBJ_FLAG_HIDDEN);'
 
   - id: wake_display
@@ -61,8 +78,10 @@ script:
           id: display_backlight
           brightness: 100%
       - globals.set: {id: display_asleep, value: 'false'}
+      - globals.set: {id: home_encoder_step_accum, value: '0'}
       - lambda: |-
           id(last_activity_ms) = millis();
+          id(wake_cooldown_until_ms) = millis() + 400;
           lv_obj_add_flag(id(sleep_overlay), LV_OBJ_FLAG_HIDDEN);
 
   - id: force_return_home
@@ -73,9 +92,12 @@ script:
       - globals.set: {id: in_air, value: 'false'}
       - globals.set: {id: in_music, value: 'false'}
       - globals.set: {id: in_timer, value: 'false'}
-      - globals.set: {id: in_fridge, value: 'false'}
+      # Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
+      # - globals.set: {id: in_fridge, value: 'false'}
       - globals.set: {id: in_lights_menu, value: 'false'}
       - globals.set: {id: in_ha_light, value: 'false'}
+      - globals.set: {id: in_radiators_menu, value: 'false'}
+      - globals.set: {id: in_radiator_room, value: 'false'}
       - globals.set: {id: in_settings_menu, value: 'false'}
       - globals.set: {id: in_display_timeout, value: 'false'}
       - globals.set: {id: in_menu_timeout, value: 'false'}
@@ -186,7 +208,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 2;
+                  int n = 3;
                   id(settings_menu_sel) = ((id(settings_menu_sel) - 1) % n + n) % n;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
@@ -280,7 +302,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 2;
+                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 3;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
                 });
@@ -288,20 +310,17 @@ script:
 
   - id: settings_menu_confirm
     then:
-      - if:
-          condition:
-            lambda: 'return id(settings_menu_sel) == 0;'
-          then:
-            - globals.set: {id: in_settings_menu, value: 'false'}
-            - script.execute: open_display_timeout
-          else:
-            - globals.set: {id: in_settings_menu, value: 'false'}
-            - script.execute: open_menu_timeout
+      - lambda: |-
+          int sel = id(settings_menu_sel);
+          id(in_settings_menu) = false;
+          if (sel == 0) { id(open_display_timeout).execute(); }
+          else if (sel == 1) { id(open_menu_timeout).execute(); }
+          else { id(open_buzzer_volume).execute(); }
 
   - id: refresh_settings_menu
     then:
       - lambda: |-
-          const int ITEM_N = 2;
+          const int ITEM_N = 3;
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -317,11 +336,17 @@ script:
           static char sub_menu[16];
           snprintf(sub_display, sizeof(sub_display), "%ds", id(display_timeout_s));
           snprintf(sub_menu, sizeof(sub_menu), "%ds", id(menu_timeout_s));
+          const char* sub_buzzer = id(buzzer_enabled) ? "On" : "Off";
 
-          const char* TITLES[2] = {"Display Timeout", "Menu Timeout"};
-          const char* SUBTITLES[2] = {sub_display, sub_menu};
-          const uint32_t ACCENT_COLORS[2] = {0x9CA3AF, 0x38BDF8};
-          const uint32_t PILL_COLORS[2] = {0x1E2024, 0x0F1E2A};
+          const char* TITLES[3] = {"Display Timeout", "Menu Timeout", "Buzzer"};
+          const char* SUBTITLES[3] = {sub_display, sub_menu, sub_buzzer};
+          const uint32_t ACCENT_COLORS[3] = {0x9CA3AF, 0x38BDF8, 0x4ADE80};
+          const uint32_t PILL_COLORS[3] = {0x1E2024, 0x0F1E2A, 0x0A2A14};
+          const lv_img_dsc_t* IMGS[3] = {
+            id(menu_img_timer)->get_lv_img_dsc(),
+            id(menu_img_timer)->get_lv_img_dsc(),
+            id(menu_img_speaker)->get_lv_img_dsc()
+          };
 
           int sel = id(settings_menu_sel);
 
@@ -387,6 +412,7 @@ script:
               lv_obj_set_style_text_color(lbls[slot], lv_color_hex(0x232A38), LV_PART_MAIN);
             }
             lv_obj_set_style_opa(lbls[slot], slot == 2 ? 255 : opa_text, LV_PART_MAIN);
+            lv_img_set_src(icons[slot], IMGS[di]);
             lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
 
             if (slot == 2) {
@@ -396,8 +422,8 @@ script:
             }
           }
 
-          const int dot_offsets[2] = {-7, 7};
-          lv_obj_t* sdots[2] = {id(sm_sdot_0), id(sm_sdot_1)};
+          const int dot_offsets[3] = {-14, 0, 14};
+          lv_obj_t* sdots[3] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2)};
           for (int d = 0; d < ITEM_N; d++) {
             if (d == sel) {
               lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
@@ -488,6 +514,46 @@ script:
           static char buf[8];
           snprintf(buf, sizeof(buf), "%d", id(menu_timeout_s));
           lv_label_set_text(id(lbl_menu_timeout_val), buf);
+      - script.execute: refresh_settings_menu
+
+  - id: open_buzzer_volume
+    then:
+      - globals.set: {id: in_buzzer_volume, value: 'true'}
+      - script.execute: refresh_buzzer_volume
+      - lvgl.page.show:
+          id: page_buzzer_volume
+          animation: MOVE_LEFT
+
+  - id: close_buzzer_volume
+    then:
+      - globals.set: {id: in_buzzer_volume, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: buzzer_volume_up
+    then:
+      - script.execute: toggle_buzzer_enabled
+
+  - id: buzzer_volume_down
+    then:
+      - script.execute: toggle_buzzer_enabled
+
+  - id: toggle_buzzer_enabled
+    then:
+      - lambda: |-
+          id(buzzer_enabled) = !id(buzzer_enabled);
+          if (id(buzzer_enabled)) {
+            id(buzzer_rtttl).play("beep:d=16,o=6,b=200:c");
+          } else {
+            id(dismiss_timer_alarm).execute();
+          }
+      - script.execute: refresh_buzzer_volume
+
+  - id: refresh_buzzer_volume
+    then:
+      - lambda: |-
+          lv_label_set_text(id(lbl_buzzer_volume_val), id(buzzer_enabled) ? "ON" : "OFF");
+          lv_obj_set_style_text_color(id(lbl_buzzer_volume_val),
+            id(buzzer_enabled) ? lv_color_hex(0x4ADE80) : lv_color_hex(0x6B7280), LV_STATE_DEFAULT);
       - script.execute: refresh_settings_menu
 
 lvgl:
@@ -672,7 +738,7 @@ lvgl:
                   id: sm_sdot_0
                   align: RIGHT_MID
                   x: -10
-                  y: -7
+                  y: -14
                   width: 5
                   height: 5
                   radius: 3
@@ -685,7 +751,20 @@ lvgl:
                   id: sm_sdot_1
                   align: RIGHT_MID
                   x: -10
-                  y: 7
+                  y: 0
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: sm_sdot_2
+                  align: RIGHT_MID
+                  x: -10
+                  y: 14
                   width: 5
                   height: 5
                   radius: 3
@@ -783,4 +862,42 @@ lvgl:
                   text: "seconds"
                   text_font: font_lbl
                   text_color: 0x6B7280
+                  text_align: CENTER
+
+    - id: page_buzzer_volume
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_buzzer_volume
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -20
+                  text: "Buzzer"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_buzzer_volume_val
+                  align: CENTER
+                  y: 10
+                  text: "ON"
+                  text_font: font_menu_item
+                  text_color: 0x4ADE80
                   text_align: CENTER

@@ -68,6 +68,12 @@ globals:
   - id: timer_set_s
     type: int
     initial_value: '0'
+  - id: timer_alarm_active
+    type: bool
+    initial_value: 'false'
+  - id: timer_alarm_start_ms
+    type: uint32_t
+    initial_value: '0'
 
 interval:
   - interval: 1s
@@ -79,6 +85,11 @@ interval:
             if (id(timer_remaining) == 0) {
               id(timer_running) = false;
               id(timer_done)    = true;
+              if (id(buzzer_enabled)) {
+                id(timer_alarm_active) = true;
+                id(timer_alarm_start_ms) = millis();
+                id(buzzer_rtttl).play("alarm:d=8,o=6,b=200:c,c,p,c,c");
+              }
             }
             id(refresh_timer).execute();
             return;
@@ -86,6 +97,13 @@ interval:
           if (id(timer_done)) {
             id(timer_blink) = !id(timer_blink);
             id(refresh_timer).execute();
+          }
+          if (id(timer_alarm_active)) {
+            if (millis() - id(timer_alarm_start_ms) >= 60000) {
+              id(dismiss_timer_alarm).execute();
+            } else if (!id(buzzer_rtttl).is_playing()) {
+              id(buzzer_rtttl).play("alarm:d=8,o=6,b=200:c,c,p,c,c");
+            }
           }
 
 script:
@@ -102,10 +120,28 @@ script:
     then:
       - globals.set: {id: in_timer,   value: 'false'}
       - globals.set: {id: timer_running, value: 'false'}
+      - script.execute: dismiss_timer_alarm
       - script.execute: open_menu
+
+  - id: dismiss_timer_alarm
+    then:
+      - if:
+          condition:
+            lambda: 'return id(timer_alarm_active);'
+          then:
+            - globals.set: {id: timer_alarm_active, value: 'false'}
+            - rtttl.stop:
+                id: buzzer_rtttl
+            - lambda: |-
+                id(timer_done)      = false;
+                id(timer_running)   = false;
+                id(timer_blink)     = true;
+                id(timer_remaining) = id(timer_total);
+            - script.execute: refresh_timer
 
   - id: timer_toggle
     then:
+      - script.execute: dismiss_timer_alarm
       - lambda: |-
           if (id(timer_done)) {
             id(timer_done)      = false;
@@ -377,6 +413,7 @@ lvgl:
                   scrollbar_mode: "OFF"
                   pad_all: 0
                   on_click:
+                    - script.execute: dismiss_timer_alarm
                     - lambda: |-
                         id(timer_running)   = false;
                         id(timer_done)      = false;

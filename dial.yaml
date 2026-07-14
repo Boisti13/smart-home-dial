@@ -7,15 +7,20 @@ packages:
   menu_page:   !include src/pages/menu.yaml
   light_page:  !include src/pages/light.yaml
   ha_lights_page: !include src/pages/ha_lights.yaml
+  radiators_page: !include src/pages/radiators.yaml
   air_page:    !include src/pages/air.yaml
   music_page:  !include src/pages/music.yaml
-  fridge_page: !include src/pages/fridge.yaml
+  # Fridge menu disabled for now; page kept intact for reference/restoration.
+  # fridge_page: !include src/pages/fridge.yaml
   timer_page:  !include src/pages/timer.yaml
   settings_page: !include src/pages/settings.yaml
 
 esphome:
   name: m5stack-dialv1
   friendly_name: M5Stack Dial
+  project:
+    name: "smart-home-dial.firmware"
+    version: "1.3.0"
   on_boot:
     - priority: 800
       then:

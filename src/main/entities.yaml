@@ -10,3 +10,12 @@ substitutions:
   light_living_entity: light.living_led
   light_test_strip_entity: light.test_ws2815_strip
   switch_test_entity: switch.test_main_led
+  radiator_kitchen_entity: climate.kitchen_radiator
+  radiator_bedroom_entity: climate.bedroom_radiator
+  radiator_arthur_entity: climate.arthur_radiator
+  radiator_living_entity: climate.living_room_radiator
+  radiator_bathroom_entity: climate.bathroom_radiator
+  window_kitchen_entity: binary_sensor.kitchen_window_contact
+  window_bedroom_entity: binary_sensor.bedroom_window_contact
+  window_arthur_entity: binary_sensor.arthur_window_contact
+  window_living_entity: binary_sensor.balcony_door_contact

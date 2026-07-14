@@ -1,0 +1,961 @@
+image:
+  - file: src/assets/images/window_closed.png
+    id: img_window_closed
+    type: RGB565
+    transparency: alpha_channel
+    resize: 20x20
+
+  - file: src/assets/images/window_open.png
+    id: img_window_open
+    type: RGB565
+    transparency: alpha_channel
+    resize: 20x20
+
+globals:
+  - id: in_radiators_menu
+    type: bool
+    initial_value: 'false'
+  - id: radiators_menu_sel
+    type: int
+    initial_value: '0'
+  - id: radiators_menu_animating
+    type: bool
+    initial_value: 'false'
+  - id: in_radiator_room
+    type: bool
+    initial_value: 'false'
+  - id: radiator_room_sel
+    type: int
+    initial_value: '0'
+  - id: radiator_on
+    type: bool[5]
+    initial_value: '{false, false, false, false, false}'
+  - id: radiator_temp
+    type: int[5]
+    initial_value: '{40, 40, 40, 40, 40}'   # stored as 2x degrees, matches the AC page's convention
+  - id: radiator_window_open
+    type: bool[5]
+    initial_value: '{false, false, false, false, false}'
+
+binary_sensor:
+  - platform: homeassistant
+    id: ha_radiator_window_0
+    entity_id: ${window_kitchen_entity}
+    trigger_on_initial_state: true
+    on_state:
+      - lambda: |-
+          id(radiator_window_open)[0] = x;
+          if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_window_1
+    entity_id: ${window_bedroom_entity}
+    trigger_on_initial_state: true
+    on_state:
+      - lambda: |-
+          id(radiator_window_open)[1] = x;
+          if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_window_2
+    entity_id: ${window_arthur_entity}
+    trigger_on_initial_state: true
+    on_state:
+      - lambda: |-
+          id(radiator_window_open)[2] = x;
+          if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_window_3
+    entity_id: ${window_living_entity}
+    trigger_on_initial_state: true
+    on_state:
+      - lambda: |-
+          id(radiator_window_open)[3] = x;
+          if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  # Bathroom has no window sensor; radiator_window_open[4] stays false and the indicator never shows.
+
+text_sensor:
+  - platform: homeassistant
+    id: ha_radiator_mode_0
+    entity_id: ${radiator_kitchen_entity}
+    on_value:
+      - lambda: |-
+          id(radiator_on)[0] = (x != "off");
+          if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_mode_1
+    entity_id: ${radiator_bedroom_entity}
+    on_value:
+      - lambda: |-
+          id(radiator_on)[1] = (x != "off");
+          if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_mode_2
+    entity_id: ${radiator_arthur_entity}
+    on_value:
+      - lambda: |-
+          id(radiator_on)[2] = (x != "off");
+          if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_mode_3
+    entity_id: ${radiator_living_entity}
+    on_value:
+      - lambda: |-
+          id(radiator_on)[3] = (x != "off");
+          if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_mode_4
+    entity_id: ${radiator_bathroom_entity}
+    on_value:
+      - lambda: |-
+          id(radiator_on)[4] = (x != "off");
+          if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+sensor:
+  - platform: homeassistant
+    id: ha_radiator_temp_0
+    entity_id: ${radiator_kitchen_entity}
+    attribute: temperature
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(radiator_temp)[0] = (int)(x * 2.0f + 0.5f);
+          if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_temp_1
+    entity_id: ${radiator_bedroom_entity}
+    attribute: temperature
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(radiator_temp)[1] = (int)(x * 2.0f + 0.5f);
+          if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_temp_2
+    entity_id: ${radiator_arthur_entity}
+    attribute: temperature
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(radiator_temp)[2] = (int)(x * 2.0f + 0.5f);
+          if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_temp_3
+    entity_id: ${radiator_living_entity}
+    attribute: temperature
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(radiator_temp)[3] = (int)(x * 2.0f + 0.5f);
+          if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_temp_4
+    entity_id: ${radiator_bathroom_entity}
+    attribute: temperature
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(radiator_temp)[4] = (int)(x * 2.0f + 0.5f);
+          if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+
+script:
+  - id: open_radiators_menu
+    then:
+      - globals.set: {id: in_radiators_menu, value: 'true'}
+      - globals.set: {id: in_menu, value: 'false'}
+      - globals.set: {id: radiators_menu_sel, value: '0'}
+      - script.execute: refresh_radiators_menu
+      - lvgl.page.show:
+          id: page_radiators_menu
+          animation: MOVE_LEFT
+
+  - id: close_radiators_menu
+    then:
+      - globals.set: {id: in_radiators_menu, value: 'false'}
+      - script.execute: open_menu
+
+  - id: radiators_menu_scroll_up
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(radiators_menu_animating);'
+          then:
+            - globals.set: {id: radiators_menu_animating, value: 'true'}
+            - lambda: |-
+                static lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, nullptr);
+                lv_anim_set_values(&a, 0, 100);
+                lv_anim_set_time(&a, 200);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
+                  const int SLOT_N = 5;
+                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+                  const float CY = 120.0f;
+                  const float ARC_CX = 162.0f;
+                  const float R = 98.0f;
+                  auto arc_dy = [](float off) -> float {
+                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+                    const float a = fabsf(off);
+                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+                  };
+
+                  lv_obj_t* slots[5] = {
+                    id(rm_far_up), id(rm_near_up), id(rm_center),
+                    id(rm_near_dn), id(rm_far_dn)
+                  };
+                  lv_obj_t* icons[5] = {
+                    id(rm_far_up_img), id(rm_near_up_img), id(rm_center_img),
+                    id(rm_near_dn_img), id(rm_far_dn_img)
+                  };
+                  lv_obj_t* title_lbls[5] = {
+                    id(rm_far_up_lbl), id(rm_near_up_lbl), id(rm_center_lbl),
+                    id(rm_near_dn_lbl), id(rm_far_dn_lbl)
+                  };
+
+                  const float phase = progress / 100.0f;
+                  int center_sub_opa = 0;
+
+                  for (int i = 0; i < SLOT_N; i++) {
+                    const float off = OFFSETS[i] + phase;
+                    float dy = arc_dy(off);
+                    if (dy > R) dy = R;
+                    if (dy < -R) dy = -R;
+
+                    const float theta = asinf(dy / R);
+                    const float x = ARC_CX - R * cosf(theta);
+                    const float y = CY + R * sinf(theta);
+
+                    float closeness = 1.0f - (fabsf(off) / 2.0f);
+                    if (closeness < 0.0f) closeness = 0.0f;
+                    if (closeness > 1.0f) closeness = 1.0f;
+
+                    const int mix = (int)(closeness * 1000.0f);
+                    int w = 40;
+                    int opa_text = 0;
+                    int opa_bg = 0;
+                    int pill_shift = 0;
+
+                    if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+                    if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+                    if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+                    if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 54);
+                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+                    lv_obj_set_width(slots[i], w);
+                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
+                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
+                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
+                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
+
+                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
+
+                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
+                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
+
+                    if (i == 2) {
+                      center_sub_opa = opa_text;
+                    }
+                  }
+
+                  lv_obj_set_style_opa(id(rm_center_sub), center_sub_opa, LV_PART_MAIN);
+                });
+                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                  int n = 5;
+                  id(radiators_menu_sel) = ((id(radiators_menu_sel) - 1) % n + n) % n;
+                  id(refresh_radiators_menu).execute();
+                  id(radiators_menu_animating) = false;
+                });
+                lv_anim_start(&a);
+
+  - id: radiators_menu_scroll_down
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(radiators_menu_animating);'
+          then:
+            - globals.set: {id: radiators_menu_animating, value: 'true'}
+            - lambda: |-
+                static lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, nullptr);
+                lv_anim_set_values(&a, 0, 100);
+                lv_anim_set_time(&a, 200);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
+                  const int SLOT_N = 5;
+                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+                  const float CY = 120.0f;
+                  const float ARC_CX = 162.0f;
+                  const float R = 98.0f;
+                  auto arc_dy = [](float off) -> float {
+                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+                    const float a = fabsf(off);
+                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+                  };
+
+                  lv_obj_t* slots[5] = {
+                    id(rm_far_up), id(rm_near_up), id(rm_center),
+                    id(rm_near_dn), id(rm_far_dn)
+                  };
+                  lv_obj_t* icons[5] = {
+                    id(rm_far_up_img), id(rm_near_up_img), id(rm_center_img),
+                    id(rm_near_dn_img), id(rm_far_dn_img)
+                  };
+                  lv_obj_t* title_lbls[5] = {
+                    id(rm_far_up_lbl), id(rm_near_up_lbl), id(rm_center_lbl),
+                    id(rm_near_dn_lbl), id(rm_far_dn_lbl)
+                  };
+
+                  const float phase = progress / 100.0f;
+                  int center_sub_opa = 0;
+
+                  for (int i = 0; i < SLOT_N; i++) {
+                    const float off = OFFSETS[i] - phase;
+                    float dy = arc_dy(off);
+                    if (dy > R) dy = R;
+                    if (dy < -R) dy = -R;
+
+                    const float theta = asinf(dy / R);
+                    const float x = ARC_CX - R * cosf(theta);
+                    const float y = CY + R * sinf(theta);
+
+                    float closeness = 1.0f - (fabsf(off) / 2.0f);
+                    if (closeness < 0.0f) closeness = 0.0f;
+                    if (closeness > 1.0f) closeness = 1.0f;
+
+                    const int mix = (int)(closeness * 1000.0f);
+                    int w = 40;
+                    int opa_text = 0;
+                    int opa_bg = 0;
+                    int pill_shift = 0;
+
+                    if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+                    if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+                    if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+                    if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 64);
+                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+                    lv_obj_set_width(slots[i], w);
+                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
+                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
+                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
+                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
+
+                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
+
+                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
+                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
+
+                    if (i == 2) {
+                      center_sub_opa = opa_text;
+                    }
+                  }
+
+                  lv_obj_set_style_opa(id(rm_center_sub), center_sub_opa, LV_PART_MAIN);
+                });
+                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                  id(radiators_menu_sel) = (id(radiators_menu_sel) + 1) % 5;
+                  id(refresh_radiators_menu).execute();
+                  id(radiators_menu_animating) = false;
+                });
+                lv_anim_start(&a);
+
+  - id: radiators_menu_confirm
+    then:
+      - lambda: |-
+          id(radiator_room_sel) = id(radiators_menu_sel);
+          id(in_radiators_menu) = false;
+      - script.execute: open_radiator_room
+
+  - id: refresh_radiators_menu
+    then:
+      - lambda: |-
+          const int ITEM_N = 5;
+          const int SLOT_N = 5;
+          const float CY = 120.0f;
+          const float ARC_CX = 162.0f;
+          const float R = 98.0f;
+          auto arc_dy = [](float off) -> float {
+            const float s = (off >= 0.0f) ? 1.0f : -1.0f;
+            const float a = fabsf(off);
+            return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
+          };
+          const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+
+          const char* TITLES[5] = {"Kitchen", "Bedroom", "Arthur", "Living Room", "Bathroom"};
+          const uint32_t ACCENT_COLORS[5] = {0xFDC003, 0xA792E8, 0x4ADE80, 0x576BFE, 0x38BDF8};
+          const uint32_t PILL_COLORS[5] = {0x2A2200, 0x231A33, 0x0A2A14, 0x0D1537, 0x0F1E2A};
+
+          int sel = id(radiators_menu_sel);
+
+          lv_obj_t* slots[5] = {
+            id(rm_far_up), id(rm_near_up), id(rm_center), id(rm_near_dn), id(rm_far_dn)
+          };
+          lv_obj_t* lbls[5] = {
+            id(rm_far_up_lbl), id(rm_near_up_lbl), id(rm_center_lbl), id(rm_near_dn_lbl), id(rm_far_dn_lbl)
+          };
+          lv_obj_t* icons[5] = {
+            id(rm_far_up_img), id(rm_near_up_img), id(rm_center_img), id(rm_near_dn_img), id(rm_far_dn_img)
+          };
+
+          for (int slot = 0; slot < SLOT_N; slot++) {
+            int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+
+            const float off = OFFSETS[slot];
+            float dy = arc_dy(off);
+            if (dy > R) dy = R;
+            if (dy < -R) dy = -R;
+
+            const float theta = asinf(dy / R);
+            const float x = ARC_CX - R * cosf(theta);
+            const float y = CY + R * sinf(theta);
+
+            float closeness = 1.0f - (fabsf(off) / 2.0f);
+            if (closeness < 0.0f) closeness = 0.0f;
+            if (closeness > 1.0f) closeness = 1.0f;
+            const int mix = (int)(closeness * 1000.0f);
+
+            int w = 40;
+            int opa_text = 0;
+            int opa_bg = 0;
+            int pill_shift = 0;
+            if (mix > 760) w = lv_map(mix, 760, 1000, 40, 200);
+            if (mix > 840) opa_text = lv_map(mix, 840, 1000, 0, 255);
+            if (mix > 820) opa_bg = lv_map(mix, 820, 1000, 0, 255);
+            if (mix > 760) pill_shift = lv_map(mix, 760, 1000, 0, 54);
+            const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
+
+            lv_obj_set_width(slots[slot], w);
+            lv_obj_set_height(slots[slot], slot == 2 ? 56 : 40);
+            lv_obj_set_style_radius(slots[slot], slot == 2 ? 28 : 20, LV_PART_MAIN);
+
+            if (slot == 2) {
+              lv_obj_set_style_bg_color(slots[slot], lv_color_hex(PILL_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], 128, LV_PART_MAIN);
+              lv_obj_set_style_border_color(slots[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_border_width(slots[slot], 2, LV_PART_MAIN);
+              lv_obj_set_style_border_opa(slots[slot], 255, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(slots[slot], lv_color_hex(0x0D1537), LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], opa_bg, LV_PART_MAIN);
+              lv_obj_set_style_border_width(slots[slot], 0, LV_PART_MAIN);
+            }
+
+            lv_obj_set_pos(slots[slot], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (slot == 2 ? 28.0f : 20.0f)));
+
+            lv_label_set_text(lbls[slot], TITLES[di]);
+            if (slot == 2) {
+              lv_obj_set_style_text_color(lbls[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_text_color(lbls[slot], lv_color_hex(0x232A38), LV_PART_MAIN);
+            }
+            lv_obj_set_style_opa(lbls[slot], slot == 2 ? 255 : opa_text, LV_PART_MAIN);
+            lv_img_set_src(icons[slot], id(menu_img_radiator)->get_lv_img_dsc());
+            lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
+
+            if (slot == 2) {
+              bool on = id(radiator_on)[di];
+              lv_label_set_text(id(rm_center_sub), on ? "On" : "Off");
+              lv_obj_set_style_text_color(id(rm_center_sub), lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
+              lv_obj_set_style_opa(id(rm_center_sub), 255, LV_PART_MAIN);
+            }
+          }
+
+          const int dot_offsets[5] = {-28, -14, 0, 14, 28};
+          lv_obj_t* sdots[5] = {id(rm_sdot_0), id(rm_sdot_1), id(rm_sdot_2), id(rm_sdot_3), id(rm_sdot_4)};
+          for (int d = 0; d < ITEM_N; d++) {
+            if (d == sel) {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
+              lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
+              lv_obj_set_size(sdots[d], 8, 8);
+              lv_obj_set_style_radius(sdots[d], 0, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(sdots[d], 450, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(0x2A3348), LV_PART_MAIN);
+              lv_obj_set_style_opa(sdots[d], 180, LV_PART_MAIN);
+              lv_obj_set_size(sdots[d], 4, 4);
+              lv_obj_set_style_radius(sdots[d], 2, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(sdots[d], 0, LV_PART_MAIN);
+            }
+          }
+
+          lv_obj_set_style_border_width(id(rm_center), 0, LV_PART_MAIN);
+
+  - id: open_radiator_room
+    then:
+      - globals.set: {id: in_radiator_room, value: 'true'}
+      - script.execute: refresh_radiator_room
+      - lvgl.page.show:
+          id: page_radiator_room
+          animation: MOVE_LEFT
+
+  - id: close_radiator_room
+    then:
+      - globals.set: {id: in_radiator_room, value: 'false'}
+      - script.execute: open_radiators_menu
+
+  - id: radiator_temp_up
+    then:
+      - lambda: |-
+          int r = id(radiator_room_sel);
+          int v = id(radiator_temp)[r] + 1;
+          if (v > 60) v = 60;  // 30C
+          id(radiator_temp)[r] = v;
+      - homeassistant.service:
+          service: climate.set_temperature
+          data:
+            entity_id: !lambda |-
+              static const char* ENTITY_IDS[5] = {
+                "${radiator_kitchen_entity}", "${radiator_bedroom_entity}", "${radiator_arthur_entity}",
+                "${radiator_living_entity}", "${radiator_bathroom_entity}"
+              };
+              return std::string(ENTITY_IDS[id(radiator_room_sel)]);
+            temperature: !lambda 'return std::to_string(id(radiator_temp)[id(radiator_room_sel)] / 2.0f);'
+      - script.execute: refresh_radiator_room
+
+  - id: radiator_temp_down
+    then:
+      - lambda: |-
+          int r = id(radiator_room_sel);
+          int v = id(radiator_temp)[r] - 1;
+          if (v < 10) v = 10;  // 5C
+          id(radiator_temp)[r] = v;
+      - homeassistant.service:
+          service: climate.set_temperature
+          data:
+            entity_id: !lambda |-
+              static const char* ENTITY_IDS[5] = {
+                "${radiator_kitchen_entity}", "${radiator_bedroom_entity}", "${radiator_arthur_entity}",
+                "${radiator_living_entity}", "${radiator_bathroom_entity}"
+              };
+              return std::string(ENTITY_IDS[id(radiator_room_sel)]);
+            temperature: !lambda 'return std::to_string(id(radiator_temp)[id(radiator_room_sel)] / 2.0f);'
+      - script.execute: refresh_radiator_room
+
+  - id: radiator_toggle_power
+    then:
+      - lambda: |-
+          int r = id(radiator_room_sel);
+          id(radiator_on)[r] = !id(radiator_on)[r];
+      - homeassistant.service:
+          service: climate.set_hvac_mode
+          data:
+            entity_id: !lambda |-
+              static const char* ENTITY_IDS[5] = {
+                "${radiator_kitchen_entity}", "${radiator_bedroom_entity}", "${radiator_arthur_entity}",
+                "${radiator_living_entity}", "${radiator_bathroom_entity}"
+              };
+              return std::string(ENTITY_IDS[id(radiator_room_sel)]);
+            hvac_mode: !lambda 'return id(radiator_on)[id(radiator_room_sel)] ? std::string("heat") : std::string("off");'
+      - script.execute: refresh_radiator_room
+
+  - id: refresh_radiator_room
+    then:
+      - lambda: |-
+          static const char* NAMES[5] = {"Kitchen", "Bedroom", "Arthur", "Living Room", "Bathroom"};
+          int r = id(radiator_room_sel);
+          int t = id(radiator_temp)[r];
+          bool on = id(radiator_on)[r];
+
+          lv_label_set_text(id(lbl_radiator_room_name), NAMES[r]);
+
+          static char tbuf[12];
+          if (t % 2 == 0) {
+            snprintf(tbuf, sizeof(tbuf), "%d\xc2\xb0", t / 2);
+          } else {
+            snprintf(tbuf, sizeof(tbuf), "%d.5\xc2\xb0", t / 2);
+          }
+          lv_label_set_text(id(lbl_radiator_temp), tbuf);
+
+          lv_arc_set_value(id(radiator_set_arc), t);
+
+          lv_img_set_src(id(img_radiator_power_btn), on ? id(img_air_power_on) : id(img_air_power_off));
+          lv_obj_set_style_border_width(id(btn_radiator_power), on ? 2 : 0, LV_PART_MAIN);
+          lv_obj_set_style_border_color(id(btn_radiator_power), lv_color_hex(0x00D7FF), LV_PART_MAIN);
+
+          bool has_window_sensor = (r != 4);
+          bool window_open = id(radiator_window_open)[r];
+          if (has_window_sensor) {
+            lv_obj_clear_flag(id(img_radiator_window), LV_OBJ_FLAG_HIDDEN);
+            lv_img_set_src(id(img_radiator_window), window_open ? id(img_window_open) : id(img_window_closed));
+          } else {
+            lv_obj_add_flag(id(img_radiator_window), LV_OBJ_FLAG_HIDDEN);
+          }
+
+lvgl:
+  pages:
+    - id: page_radiators_menu
+      bg_color: col_menu_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_radiators_menu
+      widgets:
+        - obj:
+            align: CENTER
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_menu_bg
+            border_width: 0
+            scrollbar_mode: "OFF"
+            pad_all: 0
+            widgets:
+              - obj:
+                  id: rm_far_up
+                  align: TOP_MID
+                  y: 6
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: rm_far_up_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_radiator
+                    - label:
+                        id: rm_far_up_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 25%
+
+              - obj:
+                  id: rm_near_up
+                  align: TOP_MID
+                  y: 42
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: rm_near_up_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_radiator
+                    - label:
+                        id: rm_near_up_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 50%
+
+              - obj:
+                  id: rm_center
+                  align: TOP_MID
+                  y: 102
+                  width: 168
+                  height: 56
+                  radius: 20
+                  bg_color: col_menu_pill
+                  bg_opa: COVER
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: rm_center_img
+                        align: LEFT_MID
+                        x: 14
+                        src: menu_img_radiator
+                    - label:
+                        id: rm_center_lbl
+                        x: 54
+                        y: 6
+                        text_font: font_menu_item
+                        text_color: col_text_pri
+                        width: 106
+                        long_mode: SCROLL_CIRCULAR
+                        text: "Kitchen"
+                    - label:
+                        id: rm_center_sub
+                        x: 54
+                        y: 30
+                        text_font: font_menu_sub
+                        text_color: col_menu_val
+                        width: 106
+                        long_mode: DOT
+                        text: "Off"
+
+              - obj:
+                  id: rm_near_dn
+                  align: TOP_MID
+                  y: 162
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: rm_near_dn_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_radiator
+                    - label:
+                        id: rm_near_dn_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 50%
+
+              - obj:
+                  id: rm_far_dn
+                  align: TOP_MID
+                  y: 198
+                  width: 180
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - image:
+                        id: rm_far_dn_img
+                        align: LEFT_MID
+                        x: 2
+                        src: menu_img_radiator
+                    - label:
+                        id: rm_far_dn_lbl
+                        align: LEFT_MID
+                        x: 38
+                        text_font: font_lbl
+                        text_color: col_menu_dim
+                        text: ""
+                        text_opa: 25%
+
+              - obj:
+                  id: rm_sdot_0
+                  align: RIGHT_MID
+                  x: -10
+                  y: -28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: rm_sdot_1
+                  align: RIGHT_MID
+                  x: -10
+                  y: -14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: rm_sdot_2
+                  align: RIGHT_MID
+                  x: -10
+                  y: 0
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: rm_sdot_3
+                  align: RIGHT_MID
+                  x: -10
+                  y: 14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: rm_sdot_4
+                  align: RIGHT_MID
+                  x: -10
+                  y: 28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+
+    - id: page_radiator_room
+      bg_color: col_air_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_radiator_room
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_air_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - obj:
+                  x: 10
+                  y: 10
+                  width: 220
+                  height: 220
+                  radius: 110
+                  bg_color: col_air_inner
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+
+              - arc:
+                  x: 10
+                  y: 10
+                  width: 220
+                  height: 220
+                  start_angle: 45
+                  end_angle: 315
+                  min_value: 0
+                  max_value: 100
+                  value: 100
+                  arc_color: 0x1A1D28
+                  arc_opa: COVER
+                  arc_width: 4
+                  arc_rounded: true
+                  adjustable: false
+                  clickable: false
+                  indicator:
+                    arc_opa: TRANSP
+                  knob:
+                    bg_opa: TRANSP
+                    border_width: 0
+                    width: 0
+                    height: 0
+
+              - arc:
+                  id: radiator_set_arc
+                  x: 10
+                  y: 10
+                  width: 220
+                  height: 220
+                  start_angle: 45
+                  end_angle: 315
+                  min_value: 10
+                  max_value: 60
+                  value: 40
+                  arc_color: 0x000000
+                  arc_opa: TRANSP
+                  arc_width: 4
+                  arc_rounded: true
+                  adjustable: false
+                  clickable: false
+                  indicator:
+                    arc_color: col_air_blue
+                    arc_width: 4
+                    arc_opa: COVER
+                    arc_rounded: true
+                  knob:
+                    bg_color: col_air_blue
+                    bg_opa: COVER
+                    border_width: 0
+                    width: 10
+                    height: 10
+                    radius: 5
+
+              - label:
+                  id: lbl_radiator_temp
+                  align: CENTER
+                  y: -30
+                  text: "20\xc2\xb0"
+                  text_font: font_air_temp
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - obj:
+                  id: pill_radiator_room
+                  align: CENTER
+                  y: 25
+                  width: 130
+                  height: 22
+                  radius: 15
+                  bg_color: col_light_label_bg
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: lbl_radiator_room_name
+                        align: CENTER
+                        text: "Kitchen"
+                        text_font: font_lbl
+                        text_color: col_light_label_text
+
+              - image:
+                  id: img_radiator_window
+                  align: CENTER
+                  x: -86
+                  y: 25
+                  src: img_window_closed
+
+              - obj:
+                  id: btn_radiator_power
+                  align: CENTER
+                  y: 65
+                  width: 46
+                  height: 46
+                  radius: 23
+                  bg_color: col_air_btn_mid
+                  bg_opa: COVER
+                  border_width: 1
+                  border_color: col_air_blue
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  on_click:
+                    - script.execute: radiator_toggle_power
+                  widgets:
+                    - image:
+                        id: img_radiator_power_btn
+                        align: CENTER
+                        src: img_air_power_off

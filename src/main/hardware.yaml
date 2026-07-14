@@ -29,6 +29,7 @@ output:
     id: backlight_output
 
 rtttl:
+  id: buzzer_rtttl
   output: buzzer
 
 spi:
@@ -94,6 +95,9 @@ touchscreen:
             id(touch_woke_display) = true;
             id(wake_display).execute();
           }
+          if (id(in_timer) && id(timer_alarm_active)) {
+            id(dismiss_timer_alarm).execute();
+          }
           if (id(swipe_start_x) < 0) {
             id(swipe_start_x) = touch.x;
             id(swipe_start_y) = touch.y;
@@ -122,7 +126,7 @@ touchscreen:
           id(swipe_start_x) = -1;
           if (abs(dx) < 50 || abs(dy) > abs(dx)) return;
           bool on_clock = !id(in_menu) && !id(in_light) && !id(in_air)
-                       && !id(in_music) && !id(in_timer) && !id(in_fridge)
+                       && !id(in_music) && !id(in_timer)
                        && !id(in_colorpicker);
           if (on_clock && dx < 0) {
             id(open_menu).execute();

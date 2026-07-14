@@ -67,6 +67,11 @@ image:
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
+  - file: src/assets/images/radiator.png
+    id: menu_img_radiator
+    type: RGB565
+    transparency: alpha_channel
+    resize: 34x34
 globals:
   - id: menu_sel
     type: int
@@ -343,8 +348,8 @@ script:
           ESP_LOGI("menu", "selected item %d", id(menu_sel));
           int sel = id(menu_sel);
           if      (sel == 0) { id(open_timer).execute(); }
-          else if (sel == 1) { id(open_fridge).execute(); }
-          else if (sel == 2) { id(open_lights_menu).execute(); }
+          else if (sel == 1) { id(open_lights_menu).execute(); }
+          else if (sel == 2) { id(open_radiators_menu).execute(); }
           else if (sel == 3) { id(open_air).execute(); }
           else if (sel == 4) { id(open_music).execute(); }
           else if (sel == 5) { id(open_settings_menu).execute(); }
@@ -399,35 +404,37 @@ script:
             }
           }
 
-          const char* TITLES[7]    = {"Timer", "Fridge", "Lights", "AC", "Music", "Settings", "Home"};
-          const char* SUBTITLES[7] = {"Living Rm - Auto", "Living Rm - Off",
-                                      "Living Rm - 75%",  ac_menu_sub,
+          // Fridge menu entry disabled (see src/pages/fridge.yaml, kept as reference,
+          // and dial.yaml's commented-out fridge_page include).
+          const char* TITLES[7]    = {"Timer", "Lights", "Radiators", "AC", "Music", "Settings", "Home"};
+          const char* SUBTITLES[7] = {"", "",
+                                      "",  ac_menu_sub,
                                       "Living Rm - Off",  "",
                                       "Back to Main"};
           const lv_img_dsc_t* IMGS[7] = {
             id(menu_img_timer)->get_lv_img_dsc(),
-            id(menu_img_fridge)->get_lv_img_dsc(),
             id(menu_img_light)->get_lv_img_dsc(),
+            id(menu_img_radiator)->get_lv_img_dsc(),
             id(menu_img_ac)->get_lv_img_dsc(),
             id(menu_img_music)->get_lv_img_dsc(),
             id(menu_img_settings)->get_lv_img_dsc(),
             id(menu_img_home)->get_lv_img_dsc()
           };
-          // Per-item accent colors: Timer, Fridge, Lights, AC, Music, Settings, Home
+          // Per-item accent colors: Timer, Lights, Radiators, AC, Music, Settings, Home
           const uint32_t ACCENT_COLORS[7] = {
-            0xFB923C,  // Timer    - orange
-            0x4ADE80,  // Fridge   - green
-            0xFDC003,  // Lights   - yellow
-            0x5ABBFD,  // AC       - ice blue
-            0xA792E8,  // Music    - purple
-            0x9CA3AF,  // Settings - silver
-            0x576BFE   // Home     - blue
+            0xFB923C,  // Timer     - orange
+            0xFDC003,  // Lights    - yellow
+            0xFB923C,  // Radiators - orange
+            0x5ABBFD,  // AC        - ice blue
+            0xA792E8,  // Music     - purple
+            0x9CA3AF,  // Settings  - silver
+            0x576BFE   // Home      - blue
           };
           // Pill bg: darker version of accent
           const uint32_t PILL_COLORS[7] = {
             0x2A1200,  // Timer
-            0x0A2A14,  // Fridge
             0x2A1E00,  // Lights
+            0x2A1200,  // Radiators
             0x001A2A,  // AC
             0x150A2A,  // Music
             0x1E2024,  // Settings
@@ -855,7 +862,6 @@ lvgl:
                   border_width: 0
                   clickable: false
                   scrollbar_mode: "OFF"
-
               - obj:
                   id: menu_arrow
                   align: RIGHT_MID
