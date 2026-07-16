@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-07-16
+
+### Added
+
+- **Motion Alert**: sounds the buzzer and flashes the display red with a "Check Bedroom" message when a Home Assistant motion `binary_sensor` triggers. A single Settings entry with three focusable rows (Enabled, Duration, Cooldown) — tap the front button or touch a row to focus it, then turn the encoder to adjust.
+- `motion_alarm_entity` substitution, and `motion_alert_enabled`/`motion_alarm_duration_s`/`motion_alarm_cooldown_s` globals (all persisted across reboots).
+- **Dial Sensitivity** entry in Settings: a shared `encoder_step_threshold` global (default 4, persisted, range 1–10) controlling how many raw encoder ticks make up one debounced step.
+- Debounced every value-adjusting interaction in the app against that same shared threshold: AC temperature/fan, Motion Alert's focused row, Display Timeout, Menu Timeout, Dial Sensitivity itself, and scrolling the Main/Lights/Radiators/Settings carousels (previously only AC was debounced, and inconsistently).
+- New `motion_alert.png` bell icon.
+
+### Changed
+
+- Backing out of a submenu (Settings, Lights, Radiators, or a Radiator room) now returns to the exact item you came from instead of resetting to the top of the list. Only a fresh entry from a parent menu resets the selection now (`enter_menu`/`enter_settings_menu`/`enter_lights_menu`/`enter_radiators_menu` vs. the now-non-resetting `open_*` scripts).
+
+### Fixed
+
+- Diagnosed (via temporary raw-tick logging while turning the encoder one detent at a time) that this hardware's rotary encoder produces roughly 4 raw ticks per physical click, explaining why undebounced pages moved by more than one step per click. The shared debounce threshold above addresses this everywhere at once instead of per-page.
+- Motion Alert's full-screen red flash no longer visibly tears — replaced an abrupt hidden/visible toggle with a 150ms fade in/out, which this display's small LVGL render buffer handles far more cleanly.
+- Motion Alert's Settings subtitle no longer shows a missing-glyph square (a middle-dot separator character wasn't in the subtitle font).
+
 ## [1.3.0] - 2026-07-14
 
 ### Added

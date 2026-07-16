@@ -5,6 +5,12 @@ image:
     transparency: alpha_channel
     resize: 34x34
 
+  - file: src/assets/images/motion_alert.png
+    id: menu_img_motion_alert
+    type: RGB565
+    transparency: alpha_channel
+    resize: 34x34
+
 globals:
   - id: in_settings_menu
     type: bool
@@ -18,10 +24,43 @@ globals:
   - id: in_display_timeout
     type: bool
     initial_value: 'false'
+  - id: display_timeout_encoder_accum
+    type: int
+    initial_value: '0'   # debounces the encoder so one physical click = one step change
   - id: in_menu_timeout
     type: bool
     initial_value: 'false'
+  - id: menu_timeout_encoder_accum
+    type: int
+    initial_value: '0'   # debounces the encoder so one physical click = one step change
+  - id: in_dial_sensitivity
+    type: bool
+    initial_value: 'false'
+  - id: dial_sensitivity_encoder_accum
+    type: int
+    initial_value: '0'   # debounces the encoder so one physical click = one step change
   - id: in_buzzer_volume
+    type: bool
+    initial_value: 'false'
+  - id: in_motion_alert
+    type: bool
+    initial_value: 'false'
+  - id: motion_alert_field
+    type: int
+    initial_value: '0'   # which row is focused on the Motion Alert page: 0=enabled, 1=duration, 2=cooldown
+  - id: motion_alert_encoder_accum
+    type: int
+    initial_value: '0'   # debounces the encoder so one physical click = one step change
+  - id: motion_alarm_active
+    type: bool
+    initial_value: 'false'
+  - id: motion_alarm_start_ms
+    type: uint32_t
+    initial_value: '0'
+  - id: motion_alarm_last_trigger_ms
+    type: uint32_t
+    initial_value: '0'
+  - id: motion_alarm_blink
     type: bool
     initial_value: 'false'
   - id: display_asleep
@@ -41,8 +80,9 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
-          bool timer_busy = id(in_timer) && (id(timer_running) || id(timer_alarm_active));
-          if (!timer_busy && !id(display_asleep)) {
+          bool alert_busy = id(in_timer) && (id(timer_running) || id(timer_alarm_active));
+          alert_busy = alert_busy || id(motion_alarm_active);
+          if (!alert_busy && !id(display_asleep)) {
             uint32_t elapsed = millis() - id(last_activity_ms);
             uint32_t display_timeout_ms = (uint32_t)id(display_timeout_s) * 1000;
             if (elapsed >= display_timeout_ms) {
@@ -55,13 +95,48 @@ interval:
                           !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
                           !id(in_radiators_menu) && !id(in_radiator_room) &&
                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
-                          !id(in_buzzer_volume) && !id(in_timer));
+                          !id(in_dial_sensitivity) &&
+                          !id(in_buzzer_volume) && !id(in_motion_alert) &&
+                          !id(in_timer));
           if (!on_clock) {
             uint32_t elapsed = millis() - id(last_activity_ms);
             uint32_t menu_timeout_ms = (uint32_t)id(menu_timeout_s) * 1000;
             if (elapsed >= menu_timeout_ms) {
               id(force_return_home).execute();
             }
+          }
+      - lambda: |-
+          if (id(motion_alarm_active)) {
+            uint32_t duration_ms = (uint32_t)id(motion_alarm_duration_s) * 1000;
+            if (millis() - id(motion_alarm_start_ms) >= duration_ms) {
+              id(stop_motion_alarm).execute();
+            } else if (!id(buzzer_rtttl).is_playing()) {
+              id(buzzer_rtttl).play("alarm:d=8,o=6,b=200:c,c,p,c,c");
+            }
+          }
+
+  - interval: 500ms
+    then:
+      - lambda: |-
+          if (id(motion_alarm_active)) {
+            id(motion_alarm_blink) = !id(motion_alarm_blink);
+            if (id(motion_alarm_blink)) {
+              lv_obj_fade_in(id(motion_alarm_overlay), 150, 0);
+            } else {
+              lv_obj_fade_out(id(motion_alarm_overlay), 150, 0);
+            }
+          }
+
+binary_sensor:
+  - platform: homeassistant
+    id: ha_motion_alarm
+    entity_id: ${motion_alarm_entity}
+    on_state:
+      - lambda: |-
+          uint32_t cooldown_ms = (uint32_t)id(motion_alarm_cooldown_s) * 1000;
+          bool cooled_down = millis() - id(motion_alarm_last_trigger_ms) >= cooldown_ms;
+          if (x && id(motion_alert_enabled) && id(buzzer_enabled) && cooled_down) {
+            id(start_motion_alarm).execute();
           }
 
 script:
@@ -101,6 +176,9 @@ script:
       - globals.set: {id: in_settings_menu, value: 'false'}
       - globals.set: {id: in_display_timeout, value: 'false'}
       - globals.set: {id: in_menu_timeout, value: 'false'}
+      - globals.set: {id: in_dial_sensitivity, value: 'false'}
+      - globals.set: {id: in_buzzer_volume, value: 'false'}
+      - globals.set: {id: in_motion_alert, value: 'false'}
       - lambda: 'id(last_activity_ms) = millis();'
       - lvgl.page.show:
           id: page_clock
@@ -110,11 +188,16 @@ script:
     then:
       - globals.set: {id: in_settings_menu, value: 'true'}
       - globals.set: {id: in_menu, value: 'false'}
-      - globals.set: {id: settings_menu_sel, value: '0'}
+      - globals.set: {id: menu_scroll_encoder_accum, value: '0'}
       - script.execute: refresh_settings_menu
       - lvgl.page.show:
           id: page_settings_menu
           animation: MOVE_LEFT
+
+  - id: enter_settings_menu
+    then:
+      - globals.set: {id: settings_menu_sel, value: '0'}
+      - script.execute: open_settings_menu
 
   - id: close_settings_menu
     then:
@@ -208,7 +291,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 3;
+                  int n = 5;
                   id(settings_menu_sel) = ((id(settings_menu_sel) - 1) % n + n) % n;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
@@ -302,7 +385,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 3;
+                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 5;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
                 });
@@ -315,12 +398,14 @@ script:
           id(in_settings_menu) = false;
           if (sel == 0) { id(open_display_timeout).execute(); }
           else if (sel == 1) { id(open_menu_timeout).execute(); }
-          else { id(open_buzzer_volume).execute(); }
+          else if (sel == 2) { id(open_buzzer_volume).execute(); }
+          else if (sel == 3) { id(open_motion_alert).execute(); }
+          else { id(open_dial_sensitivity).execute(); }
 
   - id: refresh_settings_menu
     then:
       - lambda: |-
-          const int ITEM_N = 3;
+          const int ITEM_N = 5;
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -337,15 +422,20 @@ script:
           snprintf(sub_display, sizeof(sub_display), "%ds", id(display_timeout_s));
           snprintf(sub_menu, sizeof(sub_menu), "%ds", id(menu_timeout_s));
           const char* sub_buzzer = id(buzzer_enabled) ? "On" : "Off";
+          const char* sub_motion = id(motion_alert_enabled) ? "On" : "Off";
+          static char sub_sensitivity[16];
+          snprintf(sub_sensitivity, sizeof(sub_sensitivity), "%d", id(encoder_step_threshold));
 
-          const char* TITLES[3] = {"Display Timeout", "Menu Timeout", "Buzzer"};
-          const char* SUBTITLES[3] = {sub_display, sub_menu, sub_buzzer};
-          const uint32_t ACCENT_COLORS[3] = {0x9CA3AF, 0x38BDF8, 0x4ADE80};
-          const uint32_t PILL_COLORS[3] = {0x1E2024, 0x0F1E2A, 0x0A2A14};
-          const lv_img_dsc_t* IMGS[3] = {
+          const char* TITLES[5] = {"Display Timeout", "Menu Timeout", "Buzzer", "Motion Alert", "Dial Sensitivity"};
+          const char* SUBTITLES[5] = {sub_display, sub_menu, sub_buzzer, sub_motion, sub_sensitivity};
+          const uint32_t ACCENT_COLORS[5] = {0x9CA3AF, 0x38BDF8, 0x4ADE80, 0xF87171, 0x38BDF8};
+          const uint32_t PILL_COLORS[5] = {0x1E2024, 0x0F1E2A, 0x0A2A14, 0x2A1414, 0x0F1E2A};
+          const lv_img_dsc_t* IMGS[5] = {
             id(menu_img_timer)->get_lv_img_dsc(),
             id(menu_img_timer)->get_lv_img_dsc(),
-            id(menu_img_speaker)->get_lv_img_dsc()
+            id(menu_img_speaker)->get_lv_img_dsc(),
+            id(menu_img_motion_alert)->get_lv_img_dsc(),
+            id(menu_img_timer)->get_lv_img_dsc()
           };
 
           int sel = id(settings_menu_sel);
@@ -422,8 +512,8 @@ script:
             }
           }
 
-          const int dot_offsets[3] = {-14, 0, 14};
-          lv_obj_t* sdots[3] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2)};
+          const int dot_offsets[5] = {-28, -14, 0, 14, 28};
+          lv_obj_t* sdots[5] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2), id(sm_sdot_3), id(sm_sdot_4)};
           for (int d = 0; d < ITEM_N; d++) {
             if (d == sel) {
               lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
@@ -445,6 +535,7 @@ script:
   - id: open_display_timeout
     then:
       - globals.set: {id: in_display_timeout, value: 'true'}
+      - globals.set: {id: display_timeout_encoder_accum, value: '0'}
       - script.execute: refresh_display_timeout
       - lvgl.page.show:
           id: page_display_timeout
@@ -479,9 +570,48 @@ script:
           lv_label_set_text(id(lbl_display_timeout_val), buf);
       - script.execute: refresh_settings_menu
 
+  - id: open_dial_sensitivity
+    then:
+      - globals.set: {id: in_dial_sensitivity, value: 'true'}
+      - globals.set: {id: dial_sensitivity_encoder_accum, value: '0'}
+      - script.execute: refresh_dial_sensitivity
+      - lvgl.page.show:
+          id: page_dial_sensitivity
+          animation: MOVE_LEFT
+
+  - id: close_dial_sensitivity
+    then:
+      - globals.set: {id: in_dial_sensitivity, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: dial_sensitivity_up
+    then:
+      - lambda: |-
+          int v = id(encoder_step_threshold) + 1;
+          if (v > 10) v = 10;
+          id(encoder_step_threshold) = v;
+      - script.execute: refresh_dial_sensitivity
+
+  - id: dial_sensitivity_down
+    then:
+      - lambda: |-
+          int v = id(encoder_step_threshold) - 1;
+          if (v < 1) v = 1;
+          id(encoder_step_threshold) = v;
+      - script.execute: refresh_dial_sensitivity
+
+  - id: refresh_dial_sensitivity
+    then:
+      - lambda: |-
+          static char buf[8];
+          snprintf(buf, sizeof(buf), "%d", id(encoder_step_threshold));
+          lv_label_set_text(id(lbl_dial_sensitivity_val), buf);
+      - script.execute: refresh_settings_menu
+
   - id: open_menu_timeout
     then:
       - globals.set: {id: in_menu_timeout, value: 'true'}
+      - globals.set: {id: menu_timeout_encoder_accum, value: '0'}
       - script.execute: refresh_menu_timeout
       - lvgl.page.show:
           id: page_menu_timeout
@@ -556,6 +686,112 @@ script:
             id(buzzer_enabled) ? lv_color_hex(0x4ADE80) : lv_color_hex(0x6B7280), LV_STATE_DEFAULT);
       - script.execute: refresh_settings_menu
 
+  - id: open_motion_alert
+    then:
+      - globals.set: {id: in_motion_alert, value: 'true'}
+      - globals.set: {id: motion_alert_field, value: '0'}
+      - globals.set: {id: motion_alert_encoder_accum, value: '0'}
+      - script.execute: refresh_motion_alert
+      - lvgl.page.show:
+          id: page_motion_alert
+          animation: MOVE_LEFT
+
+  - id: close_motion_alert
+    then:
+      - globals.set: {id: in_motion_alert, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: motion_alert_next_field
+    then:
+      - globals.set: {id: motion_alert_encoder_accum, value: '0'}
+      - lambda: 'id(motion_alert_field) = (id(motion_alert_field) + 1) % 3;'
+      - script.execute: refresh_motion_alert
+
+  - id: motion_alert_up
+    then:
+      - lambda: |-
+          int f = id(motion_alert_field);
+          if (f == 0) {
+            id(motion_alert_enabled) = !id(motion_alert_enabled);
+          } else if (f == 1) {
+            int v = id(motion_alarm_duration_s) + 5;
+            if (v > 120) v = 120;
+            id(motion_alarm_duration_s) = v;
+          } else {
+            int v = id(motion_alarm_cooldown_s) + 5;
+            if (v > 300) v = 300;
+            id(motion_alarm_cooldown_s) = v;
+          }
+      - script.execute: refresh_motion_alert
+
+  - id: motion_alert_down
+    then:
+      - lambda: |-
+          int f = id(motion_alert_field);
+          if (f == 0) {
+            id(motion_alert_enabled) = !id(motion_alert_enabled);
+          } else if (f == 1) {
+            int v = id(motion_alarm_duration_s) - 5;
+            if (v < 5) v = 5;
+            id(motion_alarm_duration_s) = v;
+          } else {
+            int v = id(motion_alarm_cooldown_s) - 5;
+            if (v < 0) v = 0;
+            id(motion_alarm_cooldown_s) = v;
+          }
+      - script.execute: refresh_motion_alert
+
+  - id: refresh_motion_alert
+    then:
+      - lambda: |-
+          int f = id(motion_alert_field);
+          const uint32_t focus_color = 0xFFFFFF;
+          const uint32_t dim_color = 0x6B7280;
+
+          static char buf_enabled[24];
+          snprintf(buf_enabled, sizeof(buf_enabled), "Enabled: %s", id(motion_alert_enabled) ? "ON" : "OFF");
+          lv_label_set_text(id(lbl_motion_row_enabled), buf_enabled);
+          lv_obj_set_style_text_color(id(lbl_motion_row_enabled),
+            lv_color_hex(f == 0 ? focus_color : dim_color), LV_STATE_DEFAULT);
+
+          static char buf_duration[24];
+          snprintf(buf_duration, sizeof(buf_duration), "Duration: %ds", id(motion_alarm_duration_s));
+          lv_label_set_text(id(lbl_motion_row_duration), buf_duration);
+          lv_obj_set_style_text_color(id(lbl_motion_row_duration),
+            lv_color_hex(f == 1 ? focus_color : dim_color), LV_STATE_DEFAULT);
+
+          static char buf_cooldown[24];
+          snprintf(buf_cooldown, sizeof(buf_cooldown), "Cooldown: %ds", id(motion_alarm_cooldown_s));
+          lv_label_set_text(id(lbl_motion_row_cooldown), buf_cooldown);
+          lv_obj_set_style_text_color(id(lbl_motion_row_cooldown),
+            lv_color_hex(f == 2 ? focus_color : dim_color), LV_STATE_DEFAULT);
+      - script.execute: refresh_settings_menu
+
+  - id: start_motion_alarm
+    then:
+      - globals.set: {id: motion_alarm_active, value: 'true'}
+      - globals.set: {id: motion_alarm_blink, value: 'true'}
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+      - lambda: |-
+          id(motion_alarm_start_ms) = millis();
+          id(motion_alarm_last_trigger_ms) = millis();
+          id(last_activity_ms) = millis();
+          lv_obj_clear_flag(id(motion_alarm_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_fade_in(id(motion_alarm_overlay), 150, 0);
+          if (!id(buzzer_rtttl).is_playing()) {
+            id(buzzer_rtttl).play("alarm:d=8,o=6,b=200:c,c,p,c,c");
+          }
+
+  - id: stop_motion_alarm
+    then:
+      - globals.set: {id: motion_alarm_active, value: 'false'}
+      - globals.set: {id: motion_alarm_blink, value: 'false'}
+      - rtttl.stop:
+          id: buzzer_rtttl
+      - lambda: 'lv_obj_add_flag(id(motion_alarm_overlay), LV_OBJ_FLAG_HIDDEN);'
+
 lvgl:
   top_layer:
     widgets:
@@ -572,6 +808,25 @@ lvgl:
           hidden: true
           on_click:
             - script.execute: wake_display
+
+      - obj:
+          id: motion_alarm_overlay
+          align: CENTER
+          width: 240
+          height: 240
+          bg_color: 0xCC0000
+          bg_opa: COVER
+          border_width: 0
+          clickable: false
+          scrollbar_mode: "OFF"
+          hidden: true
+          widgets:
+            - label:
+                align: CENTER
+                text: "Check Bedroom"
+                text_font: font_menu_item
+                text_color: 0xFFFFFF
+                text_align: CENTER
 
   pages:
     - id: page_settings_menu
@@ -738,7 +993,7 @@ lvgl:
                   id: sm_sdot_0
                   align: RIGHT_MID
                   x: -10
-                  y: -14
+                  y: -28
                   width: 5
                   height: 5
                   radius: 3
@@ -751,7 +1006,7 @@ lvgl:
                   id: sm_sdot_1
                   align: RIGHT_MID
                   x: -10
-                  y: 0
+                  y: -14
                   width: 5
                   height: 5
                   radius: 3
@@ -764,7 +1019,33 @@ lvgl:
                   id: sm_sdot_2
                   align: RIGHT_MID
                   x: -10
+                  y: 0
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: sm_sdot_3
+                  align: RIGHT_MID
+                  x: -10
                   y: 14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: sm_sdot_4
+                  align: RIGHT_MID
+                  x: -10
+                  y: 28
                   width: 5
                   height: 5
                   radius: 3
@@ -815,6 +1096,59 @@ lvgl:
                   align: CENTER
                   y: 60
                   text: "seconds"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+    - id: page_dial_sensitivity
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_dial_sensitivity
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -40
+                  text: "Dial Sensitivity"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_dial_sensitivity_val
+                  align: CENTER
+                  y: 0
+                  text: "4"
+                  text_font: font_light_big
+                  text_color: 0xFFFFFF
+
+              - label:
+                  align: CENTER
+                  y: 60
+                  text: "ticks/step"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+              - label:
+                  align: CENTER
+                  y: 85
+                  text: "Lower = more sensitive"
                   text_font: font_lbl
                   text_color: 0x6B7280
                   text_align: CENTER
@@ -900,4 +1234,118 @@ lvgl:
                   text: "ON"
                   text_font: font_menu_item
                   text_color: 0x4ADE80
+                  text_align: CENTER
+
+    - id: page_motion_alert
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_motion_alert
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -85
+                  text: "Motion Alert"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: -48
+                  width: 200
+                  height: 32
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: motion_alert_field, value: '0'}
+                    - globals.set: {id: motion_alert_encoder_accum, value: '0'}
+                    - script.execute: refresh_motion_alert
+                  widgets:
+                    - label:
+                        id: lbl_motion_row_enabled
+                        align: CENTER
+                        text: "Enabled: ON"
+                        text_font: font_menu_item
+                        text_color: 0xFFFFFF
+                        text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: -12
+                  width: 200
+                  height: 32
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: motion_alert_field, value: '1'}
+                    - globals.set: {id: motion_alert_encoder_accum, value: '0'}
+                    - script.execute: refresh_motion_alert
+                  widgets:
+                    - label:
+                        id: lbl_motion_row_duration
+                        align: CENTER
+                        text: "Duration: 20s"
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: 24
+                  width: 200
+                  height: 32
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: motion_alert_field, value: '2'}
+                    - globals.set: {id: motion_alert_encoder_accum, value: '0'}
+                    - script.execute: refresh_motion_alert
+                  widgets:
+                    - label:
+                        id: lbl_motion_row_cooldown
+                        align: CENTER
+                        text: "Cooldown: 10s"
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - label:
+                  align: CENTER
+                  y: 70
+                  text: "Tap: next field"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+              - label:
+                  align: CENTER
+                  y: 88
+                  text: "Turn: adjust"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
                   text_align: CENTER

@@ -3,7 +3,7 @@ font:
     id: font_menu_item
     size: 20
     bpp: 4
-    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .-_%/"
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .-_%/:"
 
   - file: "gfonts://DM+Sans"
     id: font_menu_center
@@ -89,12 +89,17 @@ globals:
 script:
   - id: open_menu
     then:
-      - globals.set: {id: menu_sel, value: '6'}
       - globals.set: {id: in_menu, value: 'true'}
+      - globals.set: {id: menu_scroll_encoder_accum, value: '0'}
       - script.execute: refresh_menu
       - lvgl.page.show:
           id: page_menu
           animation: MOVE_LEFT
+
+  - id: enter_menu
+    then:
+      - globals.set: {id: menu_sel, value: '6'}
+      - script.execute: open_menu
 
   - id: close_menu
     then:
@@ -348,11 +353,11 @@ script:
           ESP_LOGI("menu", "selected item %d", id(menu_sel));
           int sel = id(menu_sel);
           if      (sel == 0) { id(open_timer).execute(); }
-          else if (sel == 1) { id(open_lights_menu).execute(); }
-          else if (sel == 2) { id(open_radiators_menu).execute(); }
+          else if (sel == 1) { id(enter_lights_menu).execute(); }
+          else if (sel == 2) { id(enter_radiators_menu).execute(); }
           else if (sel == 3) { id(open_air).execute(); }
           else if (sel == 4) { id(open_music).execute(); }
-          else if (sel == 5) { id(open_settings_menu).execute(); }
+          else if (sel == 5) { id(enter_settings_menu).execute(); }
           else if (sel == 6) { id(close_menu).execute(); }
           else               { id(close_menu).execute(); }
 

@@ -168,11 +168,16 @@ script:
     then:
       - globals.set: {id: in_radiators_menu, value: 'true'}
       - globals.set: {id: in_menu, value: 'false'}
-      - globals.set: {id: radiators_menu_sel, value: '0'}
+      - globals.set: {id: menu_scroll_encoder_accum, value: '0'}
       - script.execute: refresh_radiators_menu
       - lvgl.page.show:
           id: page_radiators_menu
           animation: MOVE_LEFT
+
+  - id: enter_radiators_menu
+    then:
+      - globals.set: {id: radiators_menu_sel, value: '0'}
+      - script.execute: open_radiators_menu
 
   - id: close_radiators_menu
     then:

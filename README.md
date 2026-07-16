@@ -9,7 +9,7 @@
 [![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.3.3-blue?style=flat-square&logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/Platform-ESP32--S3-red?style=flat-square&logo=espressif)](https://www.espressif.com/)
 [![Display](https://img.shields.io/badge/Display-GC9A01A%20240x240-purple?style=flat-square)](#hardware)
-[![Version](https://img.shields.io/badge/Version-1.3.0-orange?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.4.0-orange?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#license)
 
 </div>
@@ -33,7 +33,10 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 - Show a music page with playback buttons, volume, progress, and album art.
 - Run a countdown timer with a rotary-adjustable duration and an audible alarm at zero (cancelable by touch or encoder rotation, with a 60s auto-stop).
 - Toggle the buzzer on/off from Settings if you'd rather have a silent timer.
+- Sound a buzzer alarm and flash the display red with a custom message when a Home Assistant motion sensor triggers, with configurable duration and cooldown, all adjustable from Settings.
 - Adjust display sleep and idle return-to-home timeouts from a Settings submenu; the screen dims automatically and the first touch/turn after sleep only wakes it.
+- Tune how many encoder clicks it takes to register one step, shared across every adjustable page and menu, so the dial feels the same everywhere.
+- Return to exactly where you left off when backing out of a submenu — only opening fresh from the home screen resets a menu to its default item.
 - Keep the device alive on battery power on M5Dial V1.1 by enabling the power-hold pin.
 
 ## Gallery
@@ -54,7 +57,7 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 | AC | Target temperature, power, and fan speed (auto/low/medium/high) control; swing is a local UI toggle only |
 | Music | SendSpin media state, cover art, progress, volume, and transport controls |
 | Timer | Countdown timer with rotary adjustment and an audible alarm at zero |
-| Settings | Submenu for Display Timeout (backlight sleep), Menu Timeout (idle return to the home screen), and a Buzzer on/off toggle |
+| Settings | Submenu for Display Timeout, Menu Timeout, Buzzer on/off, Motion Alert (on/off, duration, cooldown), and Dial Sensitivity |
 
 The Fridge page (small food freshness/status cards) still exists in `src/pages/fridge.yaml` but is currently disabled/commented out of `dial.yaml`; see "Project structure" below.
 
@@ -87,12 +90,12 @@ m5dial-smart-button/
 |   |-- main/
 |   |   |-- hardware.yaml        # M5Dial pins, display, touch, RTC, power hold, buzzer/rtttl
 |   |   |-- entities.yaml        # Home Assistant entity IDs
-|   |   `-- globals.yaml         # User-tunable values: scroll speed, timeouts, buzzer on/off
+|   |   `-- globals.yaml         # User-tunable values: scroll speed, timeouts, buzzer, Motion Alert, dial sensitivity
 |   |-- pages/                   # One LVGL page per feature
 |   |   |-- ha_lights.yaml       # Lights submenu + per-light on/off/brightness page
 |   |   |-- radiators.yaml       # Radiators submenu + per-room climate control page
 |   |   |-- fridge.yaml          # Fridge page (currently disabled, not included from dial.yaml)
-|   |   `-- settings.yaml        # Settings submenu: timeouts, buzzer toggle, backlight sleep/wake
+|   |   `-- settings.yaml        # Settings submenu: timeouts, buzzer, Motion Alert, Dial Sensitivity, backlight sleep/wake
 |   `-- assets/                  # Fonts and small image assets
 |-- components/                  # Local ESPHome components, including SendSpin
 |-- hardware/                    # 3D-printable enclosure files
@@ -159,6 +162,7 @@ substitutions:
   window_bedroom_entity: binary_sensor.your_bedroom_window_contact
   window_arthur_entity: binary_sensor.your_arthur_window_contact
   window_living_entity: binary_sensor.your_living_room_window_contact
+  motion_alarm_entity: binary_sensor.your_motion_sensor
 ```
 
 You can find these entity IDs in Home Assistant under **Developer Tools -> States**.
@@ -215,25 +219,55 @@ The Timer page plays an alarm tune through the onboard buzzer (`rtttl:` componen
 
 The Buzzer entry in Settings is a simple on/off toggle (`buzzer_enabled` in `src/main/globals.yaml`, persisted across reboots). When disabled, the timer alarm is silently skipped instead of playing. Volume control was attempted and dropped — the RTTTL component re-applies its own gain on every note, overriding any manual output-level change — so this is enable/disable only.
 
+## Notes about Motion Alert
+
+Motion Alert (`src/pages/settings.yaml`) sounds the buzzer and flashes the display red with a "Check Bedroom" message whenever `motion_alarm_entity` turns on. It's a single Settings entry with three focusable rows — **Enabled**, **Duration**, **Cooldown** — switch between them by tapping the front button or touching a row directly, then turn the encoder to adjust whichever is focused (toggle on/off, or ±5s).
+
+- **Duration** (default 20s, `motion_alarm_duration_s`) controls how long the buzzer and red flash run once triggered.
+- **Cooldown** (default 10s, `motion_alarm_cooldown_s`) is the minimum time between two triggers, so continued motion doesn't restart the alarm every time the sensor re-fires.
+- The red overlay fades in/out every 500ms rather than snapping on/off — an abrupt full-screen show/hide visibly tore on this display's small LVGL render buffer, and the fade avoids it. Edit the message text or color in the `motion_alarm_overlay` widget under `lvgl: top_layer:`.
+- Like the window sensors, this binary_sensor deliberately does **not** set `trigger_on_initial_state: true` — you don't want a surprise alarm just because the sensor happened to already be on when the device rebooted; only new motion events should trigger it.
+
 ## Notes about the Lights submenu
 
 The Lights submenu (`src/pages/ha_lights.yaml`) lists the onboard LED ring ("Dial Ring") plus five `light.*` entities and one `switch.*` entity from Home Assistant. Unlike the LED ring, these Home Assistant lights only get a simple on/off + brightness page — no color picker or effects, since not every bulb supports RGB.
 
 To change which entities appear or how many there are, you need to touch three places consistently: the `light_*_entity`/`switch_*_entity` substitutions in `src/main/entities.yaml`, the `ENTITY_IDS` arrays and per-entity `sensor`/`text_sensor` blocks in `src/pages/ha_lights.yaml`, and the `NAMES`/`TITLES` display-name arrays in `src/pages/ha_lights.yaml` and `src/pages/menu.yaml`. Adding or removing an entity means updating the item count (`ITEM_N`) in the submenu's carousel code too.
 
-## Notes about Settings (Display Timeout / Menu Timeout / Buzzer)
+## Notes about Settings (Display Timeout / Menu Timeout / Buzzer / Motion Alert / Dial Sensitivity)
 
-The Settings submenu (`src/pages/settings.yaml`) has three entries:
+The Settings submenu (`src/pages/settings.yaml`) has five entries:
 
 - **Display Timeout** turns off the backlight after this many seconds of inactivity. The first touch or encoder turn afterward only wakes the screen back up — it is swallowed and not treated as a normal button press or menu scroll.
 - **Menu Timeout** automatically returns to the home/clock screen after this many seconds of inactivity, no matter how deep in the menus you are.
-- **Buzzer** toggles all buzzer sounds (currently just the timer alarm) on or off.
+- **Buzzer** toggles all buzzer sounds (timer alarm and Motion Alert) on or off.
+- **Motion Alert** — see "Notes about Motion Alert" above.
+- **Dial Sensitivity** — see below.
 
 Display Timeout and Menu Timeout are both in seconds and persisted across reboots, and share the same activity tracker, which resets on any touch or encoder input anywhere in the UI. Their default values (30s and 60s) live in `src/main/globals.yaml` as `display_timeout_s`/`menu_timeout_s`; adjust the range/step in the `display_timeout_up`/`down` and `menu_timeout_up`/`down` scripts in `src/pages/settings.yaml` if 5–300 seconds in steps of 5 does not suit you.
 
+## Notes about Dial Sensitivity (encoder debounce)
+
+On this hardware, one physical click of the rotary encoder produces around 4 raw ticks, not 1 — confirmed by temporarily logging each `on_clockwise`/`on_anticlockwise` firing and turning the dial exactly one detent. Left unhandled, that means "one click" changing a value by 3-4 at once.
+
+`encoder_step_threshold` (`src/main/globals.yaml`, default 4, persisted) is the shared fix: pages that adjust a value accumulate raw ticks and only apply one real step once the accumulator reaches this threshold, in either direction. Dial Sensitivity (`src/pages/settings.yaml`) lets you tune that shared threshold from the device itself (range 1–10) — lower is more sensitive (fewer clicks needed per step), higher is less sensitive. If your dial feels like it still skips more than one item/step per click, raise this value.
+
+Every debounced interaction shares the same `encoder_step_threshold` and the same accumulate-then-step pattern, so the feel is consistent instead of each page inventing its own sensitivity:
+
+- AC temperature/fan (`air_encoder_step_accum` in `src/pages/air.yaml`)
+- Motion Alert's focused row (`motion_alert_encoder_accum`)
+- Display Timeout, Menu Timeout, Dial Sensitivity itself (`display_timeout_encoder_accum`, `menu_timeout_encoder_accum`, `dial_sensitivity_encoder_accum`)
+- Scrolling the Main/Lights/Radiators/Settings carousels (`menu_scroll_encoder_accum` in `src/pages/main.yaml` — shared across all four since only one carousel is ever open at a time)
+
+Radiator temperature, light brightness, music volume, and color-picker hue are intentionally **not** debounced — they're continuous-feeling adjustments where reacting to every raw tick is the desired behavior, not a bug.
+
 ## Notes about user-tunable globals
 
-`src/main/globals.yaml` collects the small set of values you're most likely to want to change without hunting through page files: the Display/Menu Timeout defaults above, `buzzer_enabled` (persisted on/off state for the Buzzer setting), and `scroll_anim_speed` (pixels/second for the rolling/marquee text used on menu tiles whose name is too long to fit — default 20, LVGL's own default is 25). Any label anywhere in the UI can reuse `id(scroll_anim_speed)` the same way rather than hardcoding its own speed.
+`src/main/globals.yaml` collects the small set of values you're most likely to want to change without hunting through page files: the Display/Menu Timeout defaults above, `buzzer_enabled` (persisted on/off state for the Buzzer setting), `motion_alert_enabled`/`motion_alarm_duration_s`/`motion_alarm_cooldown_s` (Motion Alert defaults), `encoder_step_threshold` (shared dial debounce sensitivity), and `scroll_anim_speed` (pixels/second for the rolling/marquee text used on menu tiles whose name is too long to fit — default 20, LVGL's own default is 25). Any label anywhere in the UI can reuse `id(scroll_anim_speed)` the same way rather than hardcoding its own speed.
+
+## Notes about menu navigation
+
+Backing out of a submenu (Settings, Lights, Radiators, or an individual Radiator room) returns you to exactly the item you came from, not the top of the list. Each carousel's "open" script (`open_menu`, `open_settings_menu`, `open_lights_menu`, `open_radiators_menu`) no longer resets the selection — only a fresh entry from its parent does that, via a separate `enter_*` script (`enter_menu`, `enter_settings_menu`, `enter_lights_menu`, `enter_radiators_menu`) that resets the selection first and then opens. If you add a new carousel, follow the same split: reset-and-open only on the "fresh from parent" path, plain open (no reset) on every "back" path.
 
 ## Notes about battery power
 
@@ -250,6 +284,8 @@ M5Dial V1.1 needs the hold pin to stay enabled when running from battery. This p
 - **Wrong or missing Lights submenu entity**: change the matching `light_*_entity`/`switch_*_entity` substitution in `src/main/entities.yaml` (see "Notes about the Lights submenu").
 - **Window indicator stuck on closed after a reflash**: make sure the room's `binary_sensor` config keeps `trigger_on_initial_state: true` (see "Notes about Radiators") — without it, the icon only updates on the sensor's next state change, not on the value already pushed at boot.
 - **Buzzer volume**: there is no volume control, only on/off — see "Notes about the Timer and Buzzer".
+- **One click moves more than one step/item**: raise Dial Sensitivity in Settings (see "Notes about Dial Sensitivity"). This hardware's encoder produces around 4 raw ticks per click, and the default threshold assumes that; a looser mechanical feel may need a higher value.
+- **Motion Alert fires too often / not often enough**: adjust Cooldown and Duration on the Motion Alert page (tap the front button or touch a row to focus it, then turn the encoder).
 - **Music page shows unavailable**: choose the real player entity, not the Dial entity itself.
 - **Album art causes reboot**: keep the artwork small and do not increase LVGL memory use too much.
 - **First build cannot download fonts**: connect to the internet once so ESPHome can fetch Google Fonts, or replace `gfonts://` fonts with local font files.
@@ -266,8 +302,8 @@ Most people will need to edit only these files:
 - `src/pages/air.yaml` if your AC's `hvac_mode`/`fan_mode` strings differ from `cool`/`off`/`auto`/`low`/`medium`/`high`.
 - `src/pages/ha_lights.yaml` and `src/pages/menu.yaml` for the Lights submenu's entities and display names.
 - `src/pages/radiators.yaml` and `src/pages/menu.yaml` for the Radiators submenu's rooms, entities, and window sensors.
-- `src/main/globals.yaml` for the default Display/Menu Timeout values, the buzzer on/off default, and the rolling-text scroll speed.
-- `src/pages/settings.yaml` for the min/max/step bounds of the Display Timeout and Menu Timeout adjustments.
+- `src/main/globals.yaml` for the default Display/Menu Timeout values, the buzzer/Motion Alert defaults, the shared dial debounce sensitivity, and the rolling-text scroll speed.
+- `src/pages/settings.yaml` for the min/max/step bounds of the Display Timeout, Menu Timeout, and Dial Sensitivity adjustments.
 
 ## License
 

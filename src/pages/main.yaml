@@ -31,7 +31,7 @@ font:
     id: font_lbl
     size: 11
     bpp: 4
-    glyphs: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ."
+    glyphs: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .:/="
 
   - file:
       family: DM+Sans
@@ -106,6 +106,9 @@ globals:
   - id: home_encoder_step_accum
     type: int
     initial_value: '0'
+  - id: menu_scroll_encoder_accum
+    type: int
+    initial_value: '0'   # debounces carousel scrolling (Main/Lights/Radiators/Settings menus); they're mutually exclusive so one accumulator covers all of them
 
 script:
   - id: dial_back
@@ -143,8 +146,16 @@ script:
             id(close_menu_timeout).execute();
             return;
           }
+          if (id(in_dial_sensitivity)) {
+            id(close_dial_sensitivity).execute();
+            return;
+          }
           if (id(in_buzzer_volume)) {
             id(close_buzzer_volume).execute();
+            return;
+          }
+          if (id(in_motion_alert)) {
+            id(close_motion_alert).execute();
             return;
           }
           if (id(in_settings_menu)) {
@@ -170,7 +181,7 @@ script:
           //   id(open_menu).execute();
           //   return;
           // }
-          id(open_menu).execute();
+          id(enter_menu).execute();
 
 sensor:
   - platform: rotary_encoder
@@ -206,7 +217,7 @@ sensor:
                 then:
                   - lambda: |-
                       id(air_encoder_step_accum) += 1;
-                      if (id(air_encoder_step_accum) >= 4) {
+                      if (id(air_encoder_step_accum) >= id(encoder_step_threshold)) {
                         id(air_encoder_step_accum) = 0;
                         if (id(air_mode) == 0) {
                           id(air_temp_up).execute();
@@ -223,12 +234,22 @@ sensor:
                 condition:
                   lambda: 'return id(in_menu);'
                 then:
-                  - script.execute: menu_scroll_down
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) += 1;
+                      if (id(menu_scroll_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(menu_scroll_down).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_lights_menu);'
                 then:
-                  - script.execute: lights_menu_scroll_down
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) += 1;
+                      if (id(menu_scroll_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(lights_menu_scroll_down).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_ha_light);'
@@ -238,7 +259,12 @@ sensor:
                 condition:
                   lambda: 'return id(in_radiators_menu);'
                 then:
-                  - script.execute: radiators_menu_scroll_down
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) += 1;
+                      if (id(menu_scroll_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(radiators_menu_scroll_down).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_radiator_room);'
@@ -248,12 +274,32 @@ sensor:
                 condition:
                   lambda: 'return id(in_display_timeout);'
                 then:
-                  - script.execute: display_timeout_up
+                  - lambda: |-
+                      id(display_timeout_encoder_accum) += 1;
+                      if (id(display_timeout_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(display_timeout_encoder_accum) = 0;
+                        id(display_timeout_up).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_menu_timeout);'
                 then:
-                  - script.execute: menu_timeout_up
+                  - lambda: |-
+                      id(menu_timeout_encoder_accum) += 1;
+                      if (id(menu_timeout_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(menu_timeout_encoder_accum) = 0;
+                        id(menu_timeout_up).execute();
+                      }
+            - if:
+                condition:
+                  lambda: 'return id(in_dial_sensitivity);'
+                then:
+                  - lambda: |-
+                      id(dial_sensitivity_encoder_accum) += 1;
+                      if (id(dial_sensitivity_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(dial_sensitivity_encoder_accum) = 0;
+                        id(dial_sensitivity_up).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_buzzer_volume);'
@@ -261,9 +307,24 @@ sensor:
                   - script.execute: buzzer_volume_up
             - if:
                 condition:
+                  lambda: 'return id(in_motion_alert);'
+                then:
+                  - lambda: |-
+                      id(motion_alert_encoder_accum) += 1;
+                      if (id(motion_alert_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(motion_alert_encoder_accum) = 0;
+                        id(motion_alert_up).execute();
+                      }
+            - if:
+                condition:
                   lambda: 'return id(in_settings_menu);'
                 then:
-                  - script.execute: settings_menu_scroll_down
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) += 1;
+                      if (id(menu_scroll_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(settings_menu_scroll_down).execute();
+                      }
             # Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
             # - if:
             #     condition:
@@ -283,14 +344,15 @@ sensor:
                            !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
                            !id(in_radiators_menu) && !id(in_radiator_room) &&
                            !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
-                           !id(in_buzzer_volume) &&
+                           !id(in_dial_sensitivity) &&
+                           !id(in_buzzer_volume) && !id(in_motion_alert) &&
                            !id(in_timer);
                 then:
                   - lambda: |-
                       int v = id(home_encoder_step_accum) + 1;
                       if (v > 1) {
                         id(home_encoder_step_accum) = 0;
-                        id(open_menu).execute();
+                        id(enter_menu).execute();
                       } else {
                         id(home_encoder_step_accum) = v;
                       }
@@ -318,7 +380,7 @@ sensor:
                 then:
                   - lambda: |-
                       id(air_encoder_step_accum) -= 1;
-                      if (id(air_encoder_step_accum) <= -4) {
+                      if (id(air_encoder_step_accum) <= -id(encoder_step_threshold)) {
                         id(air_encoder_step_accum) = 0;
                         if (id(air_mode) == 0) {
                           id(air_temp_down).execute();
@@ -335,12 +397,22 @@ sensor:
                 condition:
                   lambda: 'return id(in_menu);'
                 then:
-                  - script.execute: menu_scroll_up
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) -= 1;
+                      if (id(menu_scroll_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(menu_scroll_up).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_lights_menu);'
                 then:
-                  - script.execute: lights_menu_scroll_up
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) -= 1;
+                      if (id(menu_scroll_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(lights_menu_scroll_up).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_ha_light);'
@@ -350,7 +422,12 @@ sensor:
                 condition:
                   lambda: 'return id(in_radiators_menu);'
                 then:
-                  - script.execute: radiators_menu_scroll_up
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) -= 1;
+                      if (id(menu_scroll_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(radiators_menu_scroll_up).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_radiator_room);'
@@ -360,12 +437,32 @@ sensor:
                 condition:
                   lambda: 'return id(in_display_timeout);'
                 then:
-                  - script.execute: display_timeout_down
+                  - lambda: |-
+                      id(display_timeout_encoder_accum) -= 1;
+                      if (id(display_timeout_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(display_timeout_encoder_accum) = 0;
+                        id(display_timeout_down).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_menu_timeout);'
                 then:
-                  - script.execute: menu_timeout_down
+                  - lambda: |-
+                      id(menu_timeout_encoder_accum) -= 1;
+                      if (id(menu_timeout_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(menu_timeout_encoder_accum) = 0;
+                        id(menu_timeout_down).execute();
+                      }
+            - if:
+                condition:
+                  lambda: 'return id(in_dial_sensitivity);'
+                then:
+                  - lambda: |-
+                      id(dial_sensitivity_encoder_accum) -= 1;
+                      if (id(dial_sensitivity_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(dial_sensitivity_encoder_accum) = 0;
+                        id(dial_sensitivity_down).execute();
+                      }
             - if:
                 condition:
                   lambda: 'return id(in_buzzer_volume);'
@@ -373,9 +470,24 @@ sensor:
                   - script.execute: buzzer_volume_down
             - if:
                 condition:
+                  lambda: 'return id(in_motion_alert);'
+                then:
+                  - lambda: |-
+                      id(motion_alert_encoder_accum) -= 1;
+                      if (id(motion_alert_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(motion_alert_encoder_accum) = 0;
+                        id(motion_alert_down).execute();
+                      }
+            - if:
+                condition:
                   lambda: 'return id(in_settings_menu);'
                 then:
-                  - script.execute: settings_menu_scroll_up
+                  - lambda: |-
+                      id(menu_scroll_encoder_accum) -= 1;
+                      if (id(menu_scroll_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(menu_scroll_encoder_accum) = 0;
+                        id(settings_menu_scroll_up).execute();
+                      }
             # Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
             # - if:
             #     condition:
@@ -395,14 +507,15 @@ sensor:
                            !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
                            !id(in_radiators_menu) && !id(in_radiator_room) &&
                            !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
-                           !id(in_buzzer_volume) &&
+                           !id(in_dial_sensitivity) &&
+                           !id(in_buzzer_volume) && !id(in_motion_alert) &&
                            !id(in_timer);
                 then:
                   - lambda: |-
                       int v = id(home_encoder_step_accum) - 1;
                       if (v < -1) {
                         id(home_encoder_step_accum) = 0;
-                        id(open_menu).execute();
+                        id(enter_menu).execute();
                       } else {
                         id(home_encoder_step_accum) = v;
                       }
@@ -535,6 +648,8 @@ binary_sensor:
                             id(radiators_menu_confirm).execute();
                           } else if (id(in_settings_menu)) {
                             id(settings_menu_confirm).execute();
+                          } else if (id(in_motion_alert)) {
+                            id(motion_alert_next_field).execute();
                           } else if (id(in_timer)) {
                             id(timer_toggle).execute();
                           }

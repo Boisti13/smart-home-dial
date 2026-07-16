@@ -19,3 +19,4 @@ substitutions:
   window_bedroom_entity: binary_sensor.bedroom_window_contact
   window_arthur_entity: binary_sensor.arthur_window_contact
   window_living_entity: binary_sensor.balcony_door_contact
+  motion_alarm_entity: binary_sensor.cam_pt2_motion_alarm

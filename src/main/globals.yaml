@@ -2,6 +2,10 @@ globals:
   - id: scroll_anim_speed
     type: int
     initial_value: '20'   # px/sec for rolling/marquee label text (LVGL default is 25)
+  - id: encoder_step_threshold
+    type: int
+    restore_value: true
+    initial_value: '4'   # raw encoder ticks required per debounced step; shared by every page that debounces the dial
   - id: display_timeout_s
     type: int
     restore_value: true
@@ -14,3 +18,15 @@ globals:
     type: bool
     restore_value: true
     initial_value: 'true'   # global on/off switch for all buzzer sounds
+  - id: motion_alert_enabled
+    type: bool
+    restore_value: true
+    initial_value: 'true'   # sound the buzzer when motion_alarm_entity is triggered
+  - id: motion_alarm_duration_s
+    type: int
+    restore_value: true
+    initial_value: '20'   # how long the buzzer sounds for after motion is detected
+  - id: motion_alarm_cooldown_s
+    type: int
+    restore_value: true
+    initial_value: '10'   # minimum time between two motion-triggered alarms
