@@ -7,11 +7,6 @@ substitutions:
   icon_music: "\uF004"
   icon_volume: "\uF005"
 
-external_components:
-  - source: ./components
-    components: [const, image, generic_image, media_source, sendspin]
-    refresh: 0s
-  
 
 font:
   - file:
@@ -23,7 +18,7 @@ font:
     bpp: 4
     glyphs: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-''_()"'
 
-  - file: ./src/assets/fonts/media_player_icons.ttf
+  - file: ${dial_dir}/src/assets/fonts/media_player_icons.ttf
     id: media_player_icons
     size: 24
     bpp: 4
@@ -48,29 +43,24 @@ color:
     hex: "1A1040"
 
 image:
-  - file: src/assets/images/place_holder.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/place_holder.png
     id: place_holder
     type: RGB565
     transparency: alpha_channel
     resize: 80x80
 
-sendspin:
-  id: sendspin_hub
-
-media_player:
+  # Album art from SendSpin: the slot fetches and decodes it, current_image is
+  # what LVGL shows. Small on purpose (no PSRAM).
   - platform: sendspin
-    id: sendspin_media_player
-    name: "M5Stack Dial"
-    volume_increment: 10
-
-generic_image:
-  - platform: sendspin
-    id: sendspin_cover_art
-    format: jpg
-    type: rgb565
+    id: sendspin_cover_slot
+    format: JPG
+    type: RGB565
     resize: 80x80
-    image_source: ALBUM
-    on_image_decoded:
+    source: ALBUM
+    current_image:
+      id: sendspin_cover_art
+    on_image_display:
       - logger.log: "Album image decoded"
       - lambda: |-
           lv_obj_t *obj = id(img_music_cover);
@@ -99,6 +89,35 @@ generic_image:
           });
           lv_anim_start(&a);
 
+sendspin:
+  id: sendspin_hub
+
+media_player:
+  - platform: sendspin
+    id: sendspin_media_player
+    name: "M5Stack Dial"
+    volume_increment: 10%
+    # Playback state and the group volume both arrive as media player state.
+    on_state:
+      - lambda: |-
+          bool playing = (id(sendspin_media_player).state == media_player::MEDIA_PLAYER_STATE_PLAYING);
+          id(music_playing) = playing;
+          lv_label_set_text(id(play_label), playing ? "${icon_pause}" : "${icon_play}");
+          uint32_t duration = (std::isnan(id(sendspin_track_duration).state) ? 0u : (uint32_t) id(sendspin_track_duration).state);
+          if (duration > 0) {
+            id(local_duration_ms) = duration;
+            id(local_progress_ms) = id(sendspin_hub).get_track_progress_ms();
+            id(local_progress_sync_ms) = millis();
+          }
+          if ((int32_t)(id(music_volume_override_until_ms) - millis()) <= 0) {
+            int v = (int)(id(sendspin_media_player).volume * 100.0f + 0.5f);
+            if (v < 0) v = 0;
+            if (v > 100) v = 100;
+            id(music_volume) = v;
+          }
+      - script.execute: refresh_music_progress
+      - script.execute: refresh_music_volume
+
 text_sensor:
   - platform: sendspin
     id: track_title
@@ -113,24 +132,6 @@ text_sensor:
   - platform: sendspin
     id: track_artist
     type: artist
-
-  - platform: sendspin
-    id: sendspin_playback_state
-    type: playback_state
-    internal: true
-    on_value:
-      - lambda: |-
-          ESP_LOGD("music", "SendSpin playback state: %s", x.c_str());
-          bool playing = (x == "playing");
-          id(music_playing) = playing;
-          lv_label_set_text(id(play_label), playing ? "${icon_pause}" : "${icon_play}");
-          auto duration = id(sendspin_hub).get_track_duration_ms();
-          if (duration > 0) {
-            id(local_duration_ms) = duration;
-            id(local_progress_ms) = id(sendspin_hub).get_track_progress_ms();
-            id(local_progress_sync_ms) = millis();
-          }
-      - script.execute: refresh_music_progress
 
   - platform: homeassistant
     id: media_player_status
@@ -151,7 +152,7 @@ text_sensor:
           }
           // read track progress and duration when state change
           auto progress = id(sendspin_hub).get_track_progress_ms();
-          auto duration = id(sendspin_hub).get_track_duration_ms();
+          auto duration = (std::isnan(id(sendspin_track_duration).state) ? 0u : (uint32_t) id(sendspin_track_duration).state);
           if (duration > 0) {
             id(local_duration_ms) = duration;
             id(local_progress_ms) = progress;
@@ -176,18 +177,9 @@ sensor:
       - script.execute: refresh_music_volume
 
   - platform: sendspin
-    id: sendspin_controller_volume
-    type: controller_volume
+    id: sendspin_track_duration
+    type: track_duration
     internal: true
-    on_value:
-      - lambda: |-
-          if (x != x) return;
-          if ((int32_t)(id(music_volume_override_until_ms) - millis()) > 0) return;
-          int v = (int)(x + 0.5f);
-          if (v < 0) v = 0;
-          if (v > 100) v = 100;
-          id(music_volume) = v;
-      - script.execute: refresh_music_volume
 
   - platform: homeassistant
     id: ha_media_duration
@@ -273,19 +265,15 @@ script:
 
   - id: play_next
     then:
-      - sendspin.command:
-          id: sendspin_hub
-          command: next
+      - media_player.next: sendspin_media_player
 
   - id: play_prev
     then:
-      - sendspin.command:
-          id: sendspin_hub
-          command: previous
+      - media_player.previous: sendspin_media_player
   - id: play_toggle
     then:
       - lambda: |-
-          bool current_playing = id(sendspin_playback_state).state == "playing" ||
+          bool current_playing = id(sendspin_media_player).state == media_player::MEDIA_PLAYER_STATE_PLAYING ||
                                  id(media_player_status).state == "playing" ||
                                  id(media_player_status).state == "buffering";
           bool will_play = !current_playing;
@@ -298,17 +286,13 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(sendspin_playback_state).state == "playing" ||
+              return id(sendspin_media_player).state == media_player::MEDIA_PLAYER_STATE_PLAYING ||
                      id(media_player_status).state == "playing" ||
                      id(media_player_status).state == "buffering";
           then:
-            - sendspin.command:
-                id: sendspin_hub
-                command: pause
+            - media_player.pause: sendspin_media_player
           else:
-            - sendspin.command:
-                id: sendspin_hub
-                command: play
+            - media_player.play: sendspin_media_player
   - id: music_volume_up
     then:
       - lambda: |-
@@ -316,9 +300,9 @@ script:
           if (v > 100) v = 100;
           id(music_volume) = v;
           id(music_volume_override_until_ms) = millis() + 1200;
-      - sendspin.volume_set:
-          id: sendspin_hub
-          volume: !lambda "return id(music_volume);"
+      - media_player.volume_set:
+          id: sendspin_media_player
+          volume: !lambda "return id(music_volume) / 100.0f;"
       - homeassistant.action:
           action: media_player.volume_set
           data:
@@ -337,9 +321,9 @@ script:
           if (v < 0) v = 0;
           id(music_volume) = v;
           id(music_volume_override_until_ms) = millis() + 1200;
-      - sendspin.volume_set:
-          id: sendspin_hub
-          volume: !lambda "return id(music_volume);"
+      - media_player.volume_set:
+          id: sendspin_media_player
+          volume: !lambda "return id(music_volume) / 100.0f;"
       - homeassistant.action:
           action: media_player.volume_set
           data:
@@ -552,7 +536,7 @@ interval:
     then:
       - lambda: |-
           uint32_t now_ms = millis();
-          bool server_playing = id(sendspin_playback_state).state == "playing" ||
+          bool server_playing = id(sendspin_media_player).state == media_player::MEDIA_PLAYER_STATE_PLAYING ||
                                 id(media_player_status).state == "playing" ||
                                 id(media_player_status).state == "buffering";
           bool use_local_state = (int32_t)(id(music_state_override_until_ms) - now_ms) > 0;
@@ -561,7 +545,7 @@ interval:
           lv_label_set_text(id(play_label), playing ? "${icon_pause}" : "${icon_play}");
 
           uint32_t spin_pos = id(sendspin_hub).get_track_progress_ms();
-          auto spin_dur = id(sendspin_hub).get_track_duration_ms();
+          auto spin_dur = (std::isnan(id(sendspin_track_duration).state) ? 0u : (uint32_t) id(sendspin_track_duration).state);
           if (spin_dur > 0) {
             id(local_duration_ms) = spin_dur;
             if (spin_pos != id(last_spin_progress_ms)) {

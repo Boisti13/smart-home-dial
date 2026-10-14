@@ -2,14 +2,9 @@
 
 This project is released under the MIT License for the original project files. Some code, fonts, and build-time dependencies come from third-party projects and remain under their own licenses. Keep these notices if you fork, redistribute, or publish a modified version.
 
-## SendSpin / ESPHome media components
+## SendSpin
 
-Files under `components/sendspin/` are SendSpin-related ESPHome components. Some files in this folder include upstream notices such as:
-
-- `Copyright 2025 Sendspin Contributors`
-- Apache License, Version 2.0
-
-The SendSpin-derived parts remain under the Apache License 2.0 where indicated by their source files.
+Until v1.5.0, `components/` held copies of SendSpin-related ESPHome components (`Copyright 2025 Sendspin Contributors`, Apache License 2.0). Since v1.6.0 the project uses ESPHome's built-in `sendspin` component instead and ships no copies; it is downloaded with ESPHome under ESPHome's licenses.
 
 ## Material Design Icons font
 

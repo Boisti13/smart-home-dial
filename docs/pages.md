@@ -91,7 +91,7 @@ seeing greyed out. To change entities, names or count, update consistently:
 ## Music
 
 `src/pages/music.yaml`. Media state, transport commands and album art come
-from the local `sendspin` component (`components/sendspin/`). The Home
+from ESPHome's built-in `sendspin` component. The Home
 Assistant media player (`music_player_entity`) is also read for status,
 volume, duration and progress when it has those attributes.
 
@@ -209,9 +209,9 @@ swallowed (short cooldown) so it doesn't also open the menu.
 | `motion_alarm_duration_s` | 20 | Alarm length, seconds (saved) |
 | `motion_alarm_cooldown_s` | 10 | Minimum gap between alarms, seconds (saved) |
 | `encoder_step_threshold` | 4 | Raw ticks per step (saved) |
-| `scroll_anim_speed` | 20 | Pixels/second for scrolling menu text that doesn't fit (LVGL default: 25) |
+| `scroll_anim_speed` | 20 | Pixels/second for scrolling menu text that doesn't fit (LVGL 9 default: 40) |
 
-Any label can reuse `id(scroll_anim_speed)` instead of its own speed.
+Any label can reuse it: `lv_obj_set_style_anim_duration(label, lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN)` (see the `on_boot` lambda in `dial.yaml`).
 
 ## Battery
 

@@ -1,11 +1,13 @@
 image:
-  - file: src/assets/images/window_closed.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/window_closed.png
     id: img_window_closed
     type: RGB565
     transparency: alpha_channel
     resize: 20x20
 
-  - file: src/assets/images/window_open.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/window_open.png
     id: img_window_open
     type: RGB565
     transparency: alpha_channel
@@ -461,7 +463,7 @@ script:
               lv_obj_set_style_text_color(lbls[slot], lv_color_hex(0x232A38), LV_PART_MAIN);
             }
             lv_obj_set_style_opa(lbls[slot], slot == 2 ? 255 : opa_text, LV_PART_MAIN);
-            lv_img_set_src(icons[slot], id(menu_img_radiator)->get_lv_img_dsc());
+            lv_img_set_src(icons[slot], id(menu_img_radiator)->get_lv_image_dsc());
             lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
 
             if (slot == 2) {

@@ -32,42 +32,50 @@ color:
     hex: "2A3348"
 
 image:
-  - file: src/assets/images/bulb.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/bulb.png
     id: menu_img_light
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
-  - file: src/assets/images/ac_logo.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/ac_logo.png
     id: menu_img_ac
     type: RGB565
     transparency: alpha_channel
     resize: 32x32
-  - file: src/assets/images/music.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/music.png
     id: menu_img_music
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
-  - file: src/assets/images/fridge.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/fridge.png
     id: menu_img_fridge
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
-  - file: src/assets/images/timer.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/timer.png
     id: menu_img_timer
     type: RGB565
     transparency: alpha_channel
     resize: 32x32
-  - file: src/assets/images/home.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/home.png
     id: menu_img_home
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
-  - file: src/assets/images/scene.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/scene.png
     id: menu_img_settings
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
-  - file: src/assets/images/radiator.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/radiator.png
     id: menu_img_radiator
     type: RGB565
     transparency: alpha_channel
@@ -417,13 +425,13 @@ script:
                                       "Living Rm - Off",  "",
                                       "Back to Main"};
           const lv_img_dsc_t* IMGS[7] = {
-            id(menu_img_timer)->get_lv_img_dsc(),
-            id(menu_img_light)->get_lv_img_dsc(),
-            id(menu_img_radiator)->get_lv_img_dsc(),
-            id(menu_img_ac)->get_lv_img_dsc(),
-            id(menu_img_music)->get_lv_img_dsc(),
-            id(menu_img_settings)->get_lv_img_dsc(),
-            id(menu_img_home)->get_lv_img_dsc()
+            id(menu_img_timer)->get_lv_image_dsc(),
+            id(menu_img_light)->get_lv_image_dsc(),
+            id(menu_img_radiator)->get_lv_image_dsc(),
+            id(menu_img_ac)->get_lv_image_dsc(),
+            id(menu_img_music)->get_lv_image_dsc(),
+            id(menu_img_settings)->get_lv_image_dsc(),
+            id(menu_img_home)->get_lv_image_dsc()
           };
           // Per-item accent colors: Timer, Lights, Radiators, AC, Music, Settings, Home
           const uint32_t ACCENT_COLORS[7] = {

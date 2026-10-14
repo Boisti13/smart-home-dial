@@ -1,3 +1,10 @@
+substitutions:
+  # Folder of this project, relative to the ESPHome config folder. "." when
+  # dial.yaml is the main file; Home Assistant's ESPHome app uses a small
+  # top-level file that includes smart-home-dial/dial.yaml and sets this to
+  # ./smart-home-dial (see docs/configuration.md#home-assistants-esphome-app).
+  dial_dir: "."
+
 packages:
   hardware:    !include src/main/hardware.yaml
   entities:    !include src/main/entities.yaml
@@ -20,7 +27,7 @@ esphome:
   friendly_name: M5Stack Dial
   project:
     name: "smart-home-dial.firmware"
-    version: "1.5.0"
+    version: "1.6.0"
   on_boot:
     - priority: 800
       then:
@@ -32,9 +39,9 @@ esphome:
             id: display_backlight
             brightness: 100%
         - lambda: |-
-            lv_obj_set_style_anim_speed(id(slot_center_lbl), id(scroll_anim_speed), LV_PART_MAIN);
-            lv_obj_set_style_anim_speed(id(lm_center_lbl), id(scroll_anim_speed), LV_PART_MAIN);
-            lv_obj_set_style_anim_speed(id(sm_center_lbl), id(scroll_anim_speed), LV_PART_MAIN);
+            lv_obj_set_style_anim_duration(id(slot_center_lbl), lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN);
+            lv_obj_set_style_anim_duration(id(lm_center_lbl), lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN);
+            lv_obj_set_style_anim_duration(id(sm_center_lbl), lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN);
         - script.execute: update_loading_page
 
 esp32:
@@ -50,7 +57,7 @@ logger:
 
 api:
   encryption:
-    key: !secret api_encryption_key
+    key: !secret dial_api_key
   on_client_connected:
     - if:
         condition:
@@ -68,13 +75,13 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    password: !secret dial_ota_password
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: !secret ap_ssid
+    ssid: "M5Stack Dial Fallback"
     password: !secret ap_password
 
 captive_portal:
@@ -85,42 +92,50 @@ globals:
     initial_value: 'false'
 
 image:
-  - file: src/assets/images/logo.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/logo.png
     id: logo_img
     type: RGB565
     transparency: alpha_channel
     resize: 72x72
-  - file: src/assets/images/scene.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/scene.png
     id: img_scene
     type: RGB565
     transparency: alpha_channel
     resize: 24x24
-  - file: src/assets/images/bulb.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/bulb.png
     id: img_light
     type: RGB565
     transparency: alpha_channel
     resize: 24x24
-  - file: src/assets/images/ac.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/ac.png
     id: img_ac
     type: RGB565
     transparency: alpha_channel
     resize: 24x24
-  - file: src/assets/images/music.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/music.png
     id: img_music
     type: RGB565
     transparency: alpha_channel
     resize: 24x24
-  - file: src/assets/images/palette.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/palette.png
     id: img_palette
     type: RGB565
     transparency: alpha_channel
     resize: 24x24
-  - file: src/assets/images/brightness.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/brightness.png
     id: img_brightness
     type: RGB565
     transparency: alpha_channel
     resize: 24x24
-  - file: src/assets/images/light.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/light.png
     id: img_dengguang
     type: RGB565
     transparency: alpha_channel

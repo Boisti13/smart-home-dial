@@ -17,6 +17,7 @@
 | **Music page shows unavailable** | Use the player that really plays audio, not the Dial entity ([configuration](configuration.md#music-player)). |
 | **Reboots when album art arrives** | Keep artwork small and don't raise LVGL memory; the Dial has no PSRAM. |
 | **`esphome upload` ignores your edits** | `upload` reflashes the last build. Use `esphome run`, or `compile` first. |
-| **`esphome config` says "Platform missing" under `esphome:`** | You're on a newer ESPHome than 2026.3.3. The local `components/const` and `components/image` override the built-in ones and no longer fit. Install the pinned version: `pip install -r requirements.txt`. |
+| **`esphome config` fails on `image:` or `sendspin`** | You're on an ESPHome older than 2026.9 (or an old checkout with `components/`). Install the pinned version: `pip install -r requirements.txt`. |
+| **ESPHome app: image or font file not found** | The top-level file must set `dial_dir: ./smart-home-dial` ([configuration](configuration.md#home-assistants-esphome-app)). |
 | **First build can't download fonts** | Connect to the internet once, or replace `gfonts://` fonts with local files. |
 | **Turns off on battery** | The V1.1 power-hold pin (GPIO46) must be switched on at boot ([Battery](pages.md#battery)). |

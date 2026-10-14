@@ -1,7 +1,7 @@
 globals:
   - id: scroll_anim_speed
     type: int
-    initial_value: '20'   # px/sec for rolling/marquee label text (LVGL default is 25)
+    initial_value: '20'   # px/sec for rolling/marquee label text (LVGL 9 default is 40)
   - id: encoder_step_threshold
     type: int
     restore_value: true

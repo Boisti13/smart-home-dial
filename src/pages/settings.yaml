@@ -1,11 +1,13 @@
 image:
-  - file: src/assets/images/speaker.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/speaker.png
     id: menu_img_speaker
     type: RGB565
     transparency: alpha_channel
     resize: 34x34
 
-  - file: src/assets/images/motion_alert.png
+  - platform: file
+    file: ${dial_dir}/src/assets/images/motion_alert.png
     id: menu_img_motion_alert
     type: RGB565
     transparency: alpha_channel
@@ -431,11 +433,11 @@ script:
           const uint32_t ACCENT_COLORS[5] = {0x9CA3AF, 0x38BDF8, 0x4ADE80, 0xF87171, 0x38BDF8};
           const uint32_t PILL_COLORS[5] = {0x1E2024, 0x0F1E2A, 0x0A2A14, 0x2A1414, 0x0F1E2A};
           const lv_img_dsc_t* IMGS[5] = {
-            id(menu_img_timer)->get_lv_img_dsc(),
-            id(menu_img_timer)->get_lv_img_dsc(),
-            id(menu_img_speaker)->get_lv_img_dsc(),
-            id(menu_img_motion_alert)->get_lv_img_dsc(),
-            id(menu_img_timer)->get_lv_img_dsc()
+            id(menu_img_timer)->get_lv_image_dsc(),
+            id(menu_img_timer)->get_lv_image_dsc(),
+            id(menu_img_speaker)->get_lv_image_dsc(),
+            id(menu_img_motion_alert)->get_lv_image_dsc(),
+            id(menu_img_timer)->get_lv_image_dsc()
           };
 
           int sel = id(settings_menu_sel);

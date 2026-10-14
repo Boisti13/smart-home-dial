@@ -15,7 +15,6 @@ for working on it is in [CLAUDE.md](../CLAUDE.md).
 | `src/main/globals.yaml` | User-tunable defaults |
 | `src/pages/*.yaml` | One LVGL page per feature, each an ESPHome package |
 | `src/assets/fonts/`, `src/assets/images/` | Local fonts and small icons |
-| `components/` | Local external components (SendSpin, image helpers) |
 | `hardware/3d-models/` | STL files for the case |
 | `docs/` | Guides; `docs/images/gallery/` holds the photos used in the README |
 
@@ -50,9 +49,11 @@ esphome config dial.yaml               # every change
 esphome compile dial.yaml              # every change that isn't text-only
 ```
 
-Use exactly the pinned ESPHome (2026.3.3); newer versions clash with the
-local `components/const` and `components/image` overrides. Build on Linux.
-In the owner's setup that's the dev box (`~/.venvs/esphome-2026.3`). On
+Use the pinned ESPHome (`requirements.txt`, the same version as Home
+Assistant's ESPHome app). Build on Linux; in the owner's setup that's the
+dev box (`~/.venvs/esphome`). Local file paths (images, fonts) start with
+`${dial_dir}/` so the project also builds as a subfolder of HA's ESPHome
+folder. On
 Windows, ESP-IDF refuses Git Bash/MSYS and fails on long paths. The device
 itself is flashed by the owner.
 

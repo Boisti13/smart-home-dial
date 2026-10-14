@@ -4,8 +4,8 @@
 
 # Smart Home Dial
 
-[![Version](https://img.shields.io/badge/version-1.5.0-orange)](CHANGELOG.md)
-[![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.3.3-blue?logo=esphome)](https://esphome.io/)
+[![Version](https://img.shields.io/badge/version-1.6.0-orange)](CHANGELOG.md)
+[![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.9.1-blue?logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/platform-ESP32--S3-red?logo=espressif)](#hardware)
 [![Display](https://img.shields.io/badge/display-GC9A01A%20240x240-purple)](#hardware)
 [![License: MIT](https://img.shields.io/github/license/Boisti13/smart-home-dial)](LICENSE)
@@ -84,12 +84,12 @@ Written for the **M5Stack Dial V1.1**.
 
 | Step | What to do |
 |---|---|
-| 1. ESPHome | Python 3.11+, then `pip install -r requirements.txt` (ESPHome 2026.3.3) in a virtual environment |
+| 1. ESPHome | Python 3.11+, then `pip install -r requirements.txt` (ESPHome 2026.9.1) in a virtual environment |
 | 2. Secrets | `cp secrets.example.yaml secrets.yaml`, fill in Wi-Fi, fallback hotspot, API key, OTA password |
 | 3. Entities | Put your Home Assistant entity IDs into `src/main/entities.yaml` ([table below](#home-assistant-entities)) |
 | 4. Check | `esphome config dial.yaml` |
 | 5. Flash | first time over USB: `esphome run dial.yaml --device <port>`; later over Wi-Fi: `esphome run dial.yaml` |
-| 6. Home Assistant | Adopt the device under *Settings → Devices & services → ESPHome*, and turn on **Allow the device to perform Home Assistant actions** |
+| 6. Home Assistant | Optional: build and flash from HA's ESPHome app instead ([how](docs/configuration.md#home-assistants-esphome-app)). Adopt the device under *Settings → Devices & services → ESPHome*, and turn on **Allow the device to perform Home Assistant actions** |
 
 ```bash
 python3 -m venv ~/.venvs/esphome && source ~/.venvs/esphome/bin/activate
@@ -179,7 +179,6 @@ smart-home-dial/
 │   │   └── globals.yaml    defaults you may want to tune (timeouts, buzzer, Motion Alert, dial sensitivity, scroll speed)
 │   ├── pages/              one LVGL page per feature (main = clock, menu, light, ha_lights, radiators, air, music, timer, settings, load, fridge)
 │   └── assets/             fonts and small icons (no PSRAM: keep them small)
-├── components/             local ESPHome components (SendSpin, image helpers)
 ├── hardware/3d-models/     STL files for the case
 └── docs/                   the guides above and gallery images
 ```

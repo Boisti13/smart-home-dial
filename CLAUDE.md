@@ -31,20 +31,28 @@ the Windows PCs. Push the branch, then:
 
 ```bash
 ssh devbox 'cd ~/dev/smart-home-dial && git pull &&
-  E=~/.venvs/esphome-2026.3/bin/esphome &&
+  E=~/.venvs/esphome/bin/esphome &&
   $E config dial.yaml &&     # every change
   $E compile dial.yaml'      # anything beyond text
 ```
 
 - `secrets.yaml` there is a copy of `secrets.example.yaml` (dummy values,
   enough to validate and compile).
-- ESPHome **2026.3.3** exactly (`requirements.txt`), venv
-  `~/.venvs/esphome-2026.3` on the dev box. Newer ESPHome (2026.9.1, the
-  shared `~/.venvs/esphome`) fails with "Platform missing" because the local
-  `components/const` and `components/image` override the built-in ones.
-  Upgrading ESPHome means updating or removing those overrides first.
+- ESPHome **2026.9.1** (`requirements.txt`), the shared venv
+  `~/.venvs/esphome` on the dev box. Keep it equal to the version of Home
+  Assistant's ESPHome app, which builds what gets flashed. When the app
+  updates: bump `requirements.txt`, update the dev box venv, config + compile.
+- SendSpin (music page, album art) is ESPHome's built-in component since the
+  2026.9 port; there are no local `components/` any more.
 - Uncommitted work can't be tested there. Commit it to `dev` and push (ask
   first), or copy the changed files over with `scp` for a dry run.
+- **Home Assistant copy**: the ESPHome app builds from
+  `/homeassistant/esphome/smart-home-dial/` (`dial.yaml`, `src/`) via the
+  stub `/homeassistant/esphome/m5stack-dialv1.yaml`, which sets
+  `dial_dir: ./smart-home-dial`. After a change: back up the old folder
+  (`/config/project-backups/esphome/`), copy the new `dial.yaml` and `src/`
+  over (ask first), let the owner flash. Every local file path in the YAML
+  starts with `${dial_dir}/`, or the HA build breaks.
 - Hardware facts: no PSRAM (keep images and LVGL buffers small); the encoder
   gives ~4 raw ticks per click (debounce value pages through
   `encoder_step_threshold`, see [docs/pages.md](docs/pages.md#dial-sensitivity)).

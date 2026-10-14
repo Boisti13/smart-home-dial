@@ -5,7 +5,7 @@ Everything you set before flashing. The short version is the
 
 ## ESPHome
 
-Tested with ESPHome **2026.3.3** (pinned in `requirements.txt`), Python 3.11+.
+Tested with ESPHome **2026.9.1** (pinned in `requirements.txt`), Python 3.11+.
 Keep the virtual environment outside the project folder, and outside any
 cloud-synced folder:
 
@@ -28,12 +28,16 @@ cp secrets.example.yaml secrets.yaml
 wifi_ssid: "YOUR_WIFI_SSID"
 wifi_password: "YOUR_WIFI_PASSWORD"
 
-ap_ssid: "Dial Fallback Hotspot"          # hotspot the Dial opens when Wi-Fi fails
-ap_password: "YOUR_FALLBACK_AP_PASSWORD"
+ap_password: "YOUR_FALLBACK_AP_PASSWORD"   # "M5Stack Dial Fallback" hotspot when Wi-Fi fails
 
-api_encryption_key: "YOUR_API_ENCRYPTION_KEY"
-ota_password: "YOUR_OTA_PASSWORD"
+dial_api_key: "YOUR_API_ENCRYPTION_KEY"
+dial_ota_password: "YOUR_OTA_PASSWORD"
 ```
+
+The names fit Home Assistant's ESPHome `secrets.yaml`, which all devices
+share: `wifi_*` and `ap_password` are usually there already, `dial_*` are
+this device's. (Before v1.6.0 they were `api_encryption_key`,
+`ota_password` and `ap_ssid`; rename them when updating.)
 
 `secrets.yaml` (and `secrets.*.yaml`) are ignored by Git. The API key in the
 example is a public dummy so `esphome config` runs; generate your own before
@@ -126,6 +130,34 @@ build and ignores edits made since.
 Linux or macOS is easiest. On Windows, a full compile only works from
 PowerShell (ESP-IDF refuses Git Bash/MSYS) and from a short path such as
 `C:\sd`, because ESP-IDF builds fail on long paths.
+
+## Home Assistant's ESPHome app
+
+To build and flash from the ESPHome app (*Settings → Apps → ESPHome Device
+Builder*) instead of a computer, the project lives in a subfolder of its
+config folder, with a small top-level file the app can see:
+
+```text
+/homeassistant/esphome/
+├── m5stack-dialv1.yaml       the file the app shows (below)
+├── secrets.yaml              shared; add dial_api_key, dial_ota_password
+└── smart-home-dial/          dial.yaml and src/ from this repository
+```
+
+```yaml
+# m5stack-dialv1.yaml
+substitutions:
+  dial_dir: ./smart-home-dial   # where images and fonts are, from here
+
+packages:
+  dial: !include smart-home-dial/dial.yaml
+```
+
+`!include` paths are relative to the including file, but image and font
+paths are relative to the top-level file. That's why every local path in
+the project starts with `${dial_dir}/`, which is `.` when `dial.yaml` itself
+is the main file. Use the ESPHome version of the app (`requirements.txt`
+follows it).
 
 ## Files you may want to change
 

@@ -1,2 +1,0 @@
-CODEOWNERS = ["@kahrendt"]
-IS_PLATFORM_COMPONENT = True

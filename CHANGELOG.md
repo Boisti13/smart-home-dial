@@ -6,6 +6,21 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v1.6.0 — 2026-10-14
+
+### Added
+- **Build and flash from Home Assistant's ESPHome app**: the project goes into a `smart-home-dial/` subfolder of the app's config folder, with a three-line top-level file ([how](docs/configuration.md#home-assistants-esphome-app)).
+
+### Changed
+- **ESPHome 2026.9.1** (was 2026.3.3), the version of Home Assistant's ESPHome app. The music page uses ESPHome's built-in SendSpin: play/pause/next/previous and volume go through the standard `media_player` actions, the playback state and volume come from the media player, the track length from a `track_duration` sensor, and album art from an `image:` entry with `platform: sendspin`.
+- **Secret names** are the Dial's own, to fit a shared `secrets.yaml`: `dial_api_key` and `dial_ota_password` (were `api_encryption_key`, `ota_password`). The fallback hotspot is called *M5Stack Dial Fallback*; `ap_ssid` is gone. **Rename them in your `secrets.yaml` when updating.**
+
+### Under the hood
+- ESPHome 2026.9 brings **LVGL 9.5** (was 8.x). Lambdas use the new names: `get_lv_image_dsc()`, and the rolling-text speed is set as `lv_obj_set_style_anim_duration(…, lv_anim_speed(px/s))`.
+- The local `components/` (copies of ESPHome's `const`, `image` and SendSpin from before they were released) are gone.
+- Every local file path starts with `${dial_dir}/` (`.` by default), so the same YAML builds as the main file and as a subfolder.
+- Image entries carry `platform: file`; the LED ring uses `channel_colors: GRB` instead of the deprecated `rgb_order`.
+
 ## v1.5.0 — 2026-10-14
 
 ### Added
