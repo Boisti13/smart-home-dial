@@ -6,6 +6,9 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+### Under the hood
+- Config and compile checks run on the ESPHome build server (CT 117) with `claude-setup/scripts/esphome-check.sh` instead of the dev box (`CLAUDE.md`, `docs/development.md`).
+
 ## v2.0.0 — 2026-10-14
 
 **Breaking:** the light and radiator substitutions in `src/main/entities.yaml`

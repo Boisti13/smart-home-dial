@@ -50,8 +50,9 @@ esphome compile dial.yaml              # every change that isn't text-only
 ```
 
 Use the pinned ESPHome (`requirements.txt`, the same version as Home
-Assistant's ESPHome app). Build on Linux; in the owner's setup that's the
-dev box (`~/.venvs/esphome`). Local file paths (images, fonts) start with
+Assistant's ESPHome app). Build on Linux; in the owner's setup checks run
+on the ESPHome build server (CT 117) with
+`claude-setup/scripts/esphome-check.sh dial.yaml`, see `CLAUDE.md`. Local file paths (images, fonts) start with
 `${dial_dir}/` so the project also builds as a subfolder of HA's ESPHome
 folder. On
 Windows, ESP-IDF refuses Git Bash/MSYS and fails on long paths. The device

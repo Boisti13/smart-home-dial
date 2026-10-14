@@ -27,26 +27,31 @@ those notes.
 
 ## Checking a change
 
-**All ESPHome testing runs on the dev box** (owner, 2026-10-14), not on
-the Windows PCs. Push the branch, then:
+**ESPHome checks run on the build server**, CT 117 `esphome-builder` on
+pve_rptu_dev (owner, 2026-10-14), never on the Windows PCs. From this
+folder, on any PC or the dev box:
 
 ```bash
-ssh devbox 'cd ~/dev/smart-home-dial && git pull &&
-  E=~/.venvs/esphome/bin/esphome &&
-  $E config dial.yaml &&     # every change
-  $E compile dial.yaml'      # anything beyond text
+bash ../claude-setup/scripts/esphome-check.sh dial.yaml config    # every change
+bash ../claude-setup/scripts/esphome-check.sh dial.yaml           # + compile: anything beyond text
 ```
 
-- `secrets.yaml` there is a copy of `secrets.example.yaml` (dummy values,
-  enough to validate and compile).
-- ESPHome **2026.9.1** (`requirements.txt`), the shared venv
-  `~/.venvs/esphome` on the dev box. Keep it equal to the version of Home
-  Assistant's ESPHome app, which builds what gets flashed. When the app
-  updates: bump `requirements.txt`, update the dev box venv, config + compile.
+- It sends the working tree (uncommitted changes included, ignored files
+  such as `secrets.yaml` not) to the container and runs ESPHome there as
+  user `esphome`; output ends with `== config OK` / `== compile OK in N s`
+  and RAM/flash use. No push needed.
+- Secrets there are a copy of `secrets.example.yaml` (dummy values, enough
+  to validate and compile). The build cache stays between runs
+  (`~esphome/checks/smart-home-dial/`): ~30 s for a small change, ~90 s
+  from cold.
+- ESPHome **2026.9.1** (`requirements.txt`), the version of Home
+  Assistant's ESPHome app, which builds what gets flashed (on the same build
+  server). The check uses the builder's own ESPHome
+  (`/opt/esphome-builder`); when the app updates, bump `requirements.txt`
+  and update the builder (`pip install -U 'esphome-device-builder[esphome]'`
+  in CT 117), then check again.
 - SendSpin (music page, album art) is ESPHome's built-in component since the
   2026.9 port; there are no local `components/` any more.
-- Uncommitted work can't be tested there. Commit it to `dev` and push (ask
-  first), or copy the changed files over with `scp` for a dry run.
 - **Home Assistant copy**: the ESPHome app builds from
   `/homeassistant/esphome/smart-home-dial/` (`dial.yaml`, `src/`) via the
   stub `/homeassistant/esphome/m5stack-dialv1.yaml`, which sets
