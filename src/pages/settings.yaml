@@ -58,7 +58,7 @@ globals:
     initial_value: 'false'
   - id: menu_items_field
     type: int
-    initial_value: '0'   # which row is focused on the Menu Items page: 0=Timer ... 4=Music
+    initial_value: '0'   # which row is focused on the Menu Items page: 0=Timer ... 4=Music, 5=Auto Season
   - id: menu_items_encoder_accum
     type: int
     initial_value: '0'   # debounces the encoder so one physical click = one step change
@@ -802,7 +802,7 @@ script:
   - id: menu_items_next_field
     then:
       - globals.set: {id: menu_items_encoder_accum, value: '0'}
-      - lambda: 'id(menu_items_field) = (id(menu_items_field) + 1) % 5;'
+      - lambda: 'id(menu_items_field) = (id(menu_items_field) + 1) % 6;'
       - script.execute: refresh_menu_items
 
   # Either direction of the knob switches the focused item on or off. The
@@ -810,21 +810,21 @@ script:
   - id: menu_items_toggle
     then:
       - lambda: |-
-          switch_::Switch* SW[5] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
-                                    id(menu_show_ac), id(menu_show_music)};
+          switch_::Switch* SW[6] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
+                                    id(menu_show_ac), id(menu_show_music), id(menu_follow_season)};
           SW[id(menu_items_field)]->toggle();
 
   - id: refresh_menu_items
     then:
       - lambda: |-
-          const char* NAMES[5] = {"Timer", "Lights", "Radiators", "AC", "Music"};
-          switch_::Switch* SW[5] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
-                                    id(menu_show_ac), id(menu_show_music)};
-          lv_obj_t* LBLS[5] = {id(lbl_menu_items_row_0), id(lbl_menu_items_row_1), id(lbl_menu_items_row_2),
-                               id(lbl_menu_items_row_3), id(lbl_menu_items_row_4)};
-          static char bufs[5][24];
+          const char* NAMES[6] = {"Timer", "Lights", "Radiators", "AC", "Music", "Auto Season"};
+          switch_::Switch* SW[6] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
+                                    id(menu_show_ac), id(menu_show_music), id(menu_follow_season)};
+          lv_obj_t* LBLS[6] = {id(lbl_menu_items_row_0), id(lbl_menu_items_row_1), id(lbl_menu_items_row_2),
+                               id(lbl_menu_items_row_3), id(lbl_menu_items_row_4), id(lbl_menu_items_row_5)};
+          static char bufs[6][24];
           int f = id(menu_items_field);
-          for (int i = 0; i < 5; i++) {
+          for (int i = 0; i < 6; i++) {
             snprintf(bufs[i], sizeof(bufs[i]), "%s: %s", NAMES[i], SW[i]->state ? "ON" : "OFF");
             lv_label_set_text(LBLS[i], bufs[i]);
             uint32_t c = (i == f) ? (SW[i]->state ? 0x4ADE80 : 0xFFFFFF) : 0x6B7280;
@@ -1450,7 +1450,7 @@ lvgl:
             widgets:
               - label:
                   align: CENTER
-                  y: -92
+                  y: -98
                   text: "Menu Items"
                   text_font: font_lbl
                   text_color: 0xFFFFFF
@@ -1458,9 +1458,9 @@ lvgl:
 
               - obj:
                   align: CENTER
-                  y: -62
+                  y: -70
                   width: 200
-                  height: 28
+                  height: 24
                   bg_opa: TRANSP
                   border_width: 0
                   clickable: true
@@ -1481,9 +1481,9 @@ lvgl:
 
               - obj:
                   align: CENTER
-                  y: -34
+                  y: -46
                   width: 200
-                  height: 28
+                  height: 24
                   bg_opa: TRANSP
                   border_width: 0
                   clickable: true
@@ -1504,9 +1504,9 @@ lvgl:
 
               - obj:
                   align: CENTER
-                  y: -6
+                  y: -22
                   width: 200
-                  height: 28
+                  height: 24
                   bg_opa: TRANSP
                   border_width: 0
                   clickable: true
@@ -1527,9 +1527,9 @@ lvgl:
 
               - obj:
                   align: CENTER
-                  y: 22
+                  y: 2
                   width: 200
-                  height: 28
+                  height: 24
                   bg_opa: TRANSP
                   border_width: 0
                   clickable: true
@@ -1550,9 +1550,9 @@ lvgl:
 
               - obj:
                   align: CENTER
-                  y: 50
+                  y: 26
                   width: 200
-                  height: 28
+                  height: 24
                   bg_opa: TRANSP
                   border_width: 0
                   clickable: true
@@ -1571,9 +1571,32 @@ lvgl:
                         text_color: 0x6B7280
                         text_align: CENTER
 
+              - obj:
+                  align: CENTER
+                  y: 50
+                  width: 200
+                  height: 24
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: menu_items_field, value: '5'}
+                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
+                    - script.execute: refresh_menu_items
+                  widgets:
+                    - label:
+                        id: lbl_menu_items_row_5
+                        align: CENTER
+                        text: ""
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
               - label:
                   align: CENTER
-                  y: 84
+                  y: 90
                   text: "Tap: next  Turn: on/off"
                   text_font: font_lbl
                   text_color: 0x6B7280

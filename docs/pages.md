@@ -164,13 +164,28 @@ menu. **Settings and Home are always there**, so there's always a way back.
 The carousel and its dots show only the items that are on; with fewer than
 five, the empty slots stay blank instead of repeating an item.
 
-- **On the Dial**: *Settings → Menu Items* has one row per item. Turn the
+- **On the Dial**: *Settings → Menu Items* has one row per item, plus
+  *Auto Season* (below). Turn the
   knob to switch the focused row on or off (green = on); tap a row or press
   the button to focus the next one.
 - **From Home Assistant**: the device has five switches, *Menu Timer*,
-  *Menu Lights*, *Menu Radiators*, *Menu AC*, *Menu Music* (entity IDs like
+  *Menu Lights*, *Menu Radiators*, *Menu AC*, *Menu Music*, plus *Menu
+  Follows Season* (entity IDs like
   `switch.m5stack_dial_menu_timer`, under the device's *Configuration*).
   Usable in automations too, e.g. hide AC in winter.
+
+**Season mode**: the Dial follows `season_mode_entity` (an `input_select`
+with the options `Summer` and `Winter`). When it changes to *Winter*,
+Radiators is switched on and AC off; to *Summer*, the other way round. It
+acts only on a change of season (the last one is saved in
+`last_season_mode`), so a reboot or reconnect doesn't undo what you set by
+hand in between; the next change of season does. Other values
+(`unavailable`, a third option) are ignored.
+
+This can be turned off: the **Auto Season** row on the Menu Items page, or
+the switch *Menu Follows Season* in Home Assistant (on by default). While
+it's off, season changes leave the menu alone; turning it back on applies
+the current season straight away.
 
 Both change the same setting, and it is saved on the Dial across reboots
 (new installs start with everything on). The switches are template

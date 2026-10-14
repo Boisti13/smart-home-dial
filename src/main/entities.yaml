@@ -24,3 +24,4 @@ substitutions:
   window_living_entity: binary_sensor.balcony_door_contact
   motion_alarm_entity: binary_sensor.cam_pt2_motion_alarm
   motion_alarm_message: "Check Bedroom"   # shown on the red Motion Alert screen
+  season_mode_entity: input_select.season_mode   # Summer / Winter: shows AC or Radiators in the main menu

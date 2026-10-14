@@ -112,6 +112,11 @@ The Dial also brings its own entities into Home Assistant: among others the
 five **Menu** switches (*Menu Timer*, *Menu Lights*, …) that hide pages from
 the main menu ([pages.md → Menu items](pages.md#menu-items)).
 
+**Season mode** (`season_mode_entity`): an `input_select` with the options
+`Summer` and `Winter`. The Dial shows the AC in summer and the radiators in
+winter, unless the switch *Menu Follows Season* is off. Without such a helper, create one under *Settings → Devices &
+services → Helpers → Dropdown* with exactly those two options.
+
 ## Music player
 
 Choose the entity that actually plays audio, not the Dial itself. A good

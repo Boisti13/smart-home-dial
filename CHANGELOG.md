@@ -6,6 +6,12 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v1.8.0 — 2026-10-14
+
+### Added
+- **The main menu follows the season**: when Home Assistant's season select (`season_mode_entity`, default `input_select.season_mode`, options *Summer* / *Winter*) changes to *Winter*, the menu shows Radiators and hides AC; on *Summer* the other way round. Only a change of season switches them, so anything you set by hand in between stays until the next change. **Add `season_mode_entity` to your `src/main/entities.yaml`.**
+- **Auto Season on/off**: a row on *Settings → Menu Items* and the switch *Menu Follows Season* in Home Assistant (on by default). Turning it back on applies the current season at once.
+
 ## v1.7.0 — 2026-10-14
 
 ### Added

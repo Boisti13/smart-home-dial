@@ -93,6 +93,19 @@ globals:
   - id: button_debounce
     type: bool
     initial_value: 'false'
+  - id: last_season_mode
+    type: int
+    restore_value: true
+    initial_value: '0'   # last season seen from season_mode_entity: 0 = none yet, 1 = Winter, 2 = Summer
+
+# Season mode from Home Assistant: Winter shows Radiators and hides AC, Summer
+# the other way round (apply_season_mode), while "Menu Follows Season" is on.
+text_sensor:
+  - platform: homeassistant
+    id: ha_season_mode
+    entity_id: ${season_mode_entity}
+    on_value:
+      - script.execute: apply_season_mode
 
 # Which items the main menu shows (Settings -> Menu Items on the Dial, or these
 # switches in Home Assistant). Saved on the device. Settings and Home are
@@ -153,8 +166,46 @@ switch:
       - script.execute: menu_items_changed
     on_turn_off:
       - script.execute: menu_items_changed
+  - platform: template
+    id: menu_follow_season
+    name: "Menu Follows Season"
+    icon: mdi:sun-snowflake-variant
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      # Switched (back) on: apply the current season right away. Not at boot,
+      # when the switch restores itself before Home Assistant has sent a season.
+      - lambda: |-
+          if (id(ha_season_mode).has_state()) {
+            id(last_season_mode) = 0;
+            id(apply_season_mode).execute();
+          }
+      - script.execute: menu_items_changed
+    on_turn_off:
+      - script.execute: menu_items_changed
 
 script:
+  # Show Radiators in winter and AC in summer. Acts only on a change of season
+  # (remembered in last_season_mode), so a reboot or reconnect keeps what was
+  # set by hand since; the next change of season does switch them.
+  - id: apply_season_mode
+    then:
+      - lambda: |-
+          if (!id(menu_follow_season).state) return;
+          const std::string &x = id(ha_season_mode).state;
+          int season = (x == "Winter") ? 1 : (x == "Summer") ? 2 : 0;
+          if (season == 0 || season == id(last_season_mode)) return;
+          id(last_season_mode) = season;
+          ESP_LOGI("menu", "season mode %s: %s shown", x.c_str(), season == 1 ? "Radiators" : "AC");
+          if (season == 1) {
+            id(menu_show_radiators).turn_on();
+            id(menu_show_ac).turn_off();
+          } else {
+            id(menu_show_ac).turn_on();
+            id(menu_show_radiators).turn_off();
+          }
+
   # A menu item was switched on or off: redraw whatever shows it.
   - id: menu_items_changed
     then:

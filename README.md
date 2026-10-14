@@ -4,7 +4,7 @@
 
 # Smart Home Dial
 
-[![Version](https://img.shields.io/badge/version-1.7.0-orange)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-orange)](CHANGELOG.md)
 [![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.9.1-blue?logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/platform-ESP32--S3-red?logo=espressif)](#hardware)
 [![Display](https://img.shields.io/badge/display-GC9A01A%20240x240-purple)](#hardware)
@@ -36,6 +36,7 @@ reworked dial feel added on top.
 - **Motion Alert**: buzzer and a red flashing screen with your own message when a Home Assistant motion sensor triggers, with adjustable duration and cooldown; a touch, turn or press silences it
 - **Settings on the device**: screen timeout, back-to-home timeout, buzzer on/off, Motion Alert, **dial sensitivity**, and **which pages the main menu shows**. Everything is saved across reboots
 - **Hide what you don't use**: switch Timer, Lights, Radiators, AC or Music off in the main menu, on the Dial or from Home Assistant
+- **Follows the season** (can be turned off): a Summer/Winter select in Home Assistant shows the AC in summer and the radiators in winter
 - **Feels the same everywhere**: one click is one step on every page and menu, and backing out of a submenu returns you to where you were
 - **Three ways to navigate**: turn the knob, touch, or press the front button. From the home screen a swipe or a turn opens the menu
 - **Battery-friendly**: the screen sleeps by itself, and the first touch only wakes it
@@ -123,6 +124,7 @@ All in `src/main/entities.yaml`; find the IDs under *Developer Tools → States*
 | `window_kitchen_entity`, `window_bedroom_entity`, `window_arthur_entity`, `window_living_entity` | `binary_sensor.*` door/window contact | Radiators (Bathroom has none) |
 | `motion_alarm_entity` | `binary_sensor.*` motion | Motion Alert |
 | `motion_alarm_message` | text, e.g. `"Check Bedroom"` | Motion Alert screen |
+| `season_mode_entity` | `input_select.*` with the options `Summer` and `Winter` | Main menu: AC in summer, Radiators in winter |
 
 Display names ("Kitchen", "Bed Underglow" …) and the number of lights and
 rooms are fixed in the page files. See
