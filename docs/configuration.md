@@ -30,18 +30,33 @@ wifi_password: "YOUR_WIFI_PASSWORD"
 
 ap_password: "YOUR_FALLBACK_AP_PASSWORD"   # "M5Stack Dial Fallback" hotspot when Wi-Fi fails
 
-dial_api_key: "YOUR_API_ENCRYPTION_KEY"
-dial_ota_password: "YOUR_OTA_PASSWORD"
+dial_api_key: "YOUR_API_ENCRYPTION_KEY"   # also encrypts OTA uploads
 ```
 
 The names fit Home Assistant's ESPHome `secrets.yaml`, which all devices
 share: `wifi_*` and `ap_password` are usually there already, `dial_*` are
 this device's. (Before v1.6.0 they were `api_encryption_key`,
-`ota_password` and `ap_ssid`; rename them when updating.)
+`ota_password` and `ap_ssid`; rename `api_encryption_key` when updating,
+the other two are no longer used.)
 
 `secrets.yaml` (and `secrets.*.yaml`) are ignored by Git. The API key in the
 example is a public dummy so `esphome config` runs; generate your own before
 flashing a real device (e.g. `openssl rand -base64 32`).
+
+### Over-the-air updates
+
+There is no OTA password. Uploads are encrypted with `dial_api_key`, the
+same key Home Assistant uses, and the Dial refuses unencrypted ones
+(`ota: encryption: {}` in `dial.yaml`). Whoever builds from the same
+`secrets.yaml` (ESPHome app or `esphome run`) uploads without extra setup.
+
+Coming from firmware **before v1.6.0** (ESPHome 2026.3), the Dial can't do
+encrypted uploads yet, so the first update won't go over the air. Either
+flash it once over USB, or build v1.6.0 once with
+`password: !secret dial_ota_password` instead of `encryption: {}` under
+`ota:` and switch back for the next update. Firmware built with ESPHome
+2026.9 or later, password or not, already accepts encrypted uploads with
+the API key, so the switch then needs nothing special.
 
 ## Home Assistant entities
 
@@ -140,7 +155,7 @@ config folder, with a small top-level file the app can see:
 ```text
 /homeassistant/esphome/
 ├── m5stack-dialv1.yaml       the file the app shows (below)
-├── secrets.yaml              shared; add dial_api_key, dial_ota_password
+├── secrets.yaml              shared; add dial_api_key
 └── smart-home-dial/          dial.yaml and src/ from this repository
 ```
 

@@ -13,7 +13,8 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ### Changed
 - **ESPHome 2026.9.1** (was 2026.3.3), the version of Home Assistant's ESPHome app. The music page uses ESPHome's built-in SendSpin: play/pause/next/previous and volume go through the standard `media_player` actions, the playback state and volume come from the media player, the track length from a `track_duration` sensor, and album art from an `image:` entry with `platform: sendspin`.
-- **Secret names** are the Dial's own, to fit a shared `secrets.yaml`: `dial_api_key` and `dial_ota_password` (were `api_encryption_key`, `ota_password`). The fallback hotspot is called *M5Stack Dial Fallback*; `ap_ssid` is gone. **Rename them in your `secrets.yaml` when updating.**
+- **Secret names** are the Dial's own, to fit a shared `secrets.yaml`: `dial_api_key` (was `api_encryption_key`). The fallback hotspot is called *M5Stack Dial Fallback*; `ap_ssid` is gone. **Rename it in your `secrets.yaml` when updating.**
+- **No OTA password any more**: over-the-air updates are encrypted with the API key (`dial_api_key`) and must be, as ESPHome 2026.9 recommends; it also saves about 3.5 KB of flash. `ota_password` is no longer used. Updating from firmware before v1.6.0 over the air needs one step in between ([how](docs/configuration.md#over-the-air-updates)).
 
 ### Under the hood
 - ESPHome 2026.9 brings **LVGL 9.5** (was 8.x). Lambdas use the new names: `get_lv_image_dsc()`, and the rolling-text speed is set as `lv_obj_set_style_anim_duration(…, lv_anim_speed(px/s))`.

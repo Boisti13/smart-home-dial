@@ -75,7 +75,9 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret dial_ota_password
+    # Uploads are encrypted with the API key (dial_api_key) and must be;
+    # no separate OTA password.
+    encryption: {}
 
 wifi:
   ssid: !secret wifi_ssid
