@@ -12,6 +12,7 @@ change it. Entity IDs are set in `src/main/entities.yaml`; see
 - [Timer and buzzer](#timer-and-buzzer)
 - [Motion Alert](#motion-alert)
 - [Settings](#settings)
+- [Menu items](#menu-items)
 - [Dial sensitivity](#dial-sensitivity)
 - [Menu navigation](#menu-navigation)
 - [Tunable defaults](#tunable-defaults)
@@ -140,7 +141,7 @@ or touch a row to focus it, then turn the knob (on/off, or ±5 s).
 
 ## Settings
 
-`src/pages/settings.yaml`, five entries:
+`src/pages/settings.yaml`, six entries:
 
 | Entry | What it does | Default | Range |
 |---|---|---|---|
@@ -149,11 +150,34 @@ or touch a row to focus it, then turn the knob (on/off, or ±5 s).
 | **Buzzer** | All buzzer sounds on/off | on | |
 | **Motion Alert** | See [above](#motion-alert) | | |
 | **Dial Sensitivity** | See [below](#dial-sensitivity) | 4 | 1–10 |
+| **Menu Items** | Which pages the main menu shows; see [below](#menu-items) | all on | |
 
 All values are saved across reboots. Both timeouts share one activity
 tracker that any touch or turn resets. Defaults are in
 `src/main/globals.yaml`; the ranges are in the `*_up` / `*_down` scripts in
 `src/pages/settings.yaml`.
+
+## Menu items
+
+Timer, Lights, Radiators, AC and Music can each be hidden from the main
+menu. **Settings and Home are always there**, so there's always a way back.
+The carousel and its dots show only the items that are on; with fewer than
+five, the empty slots stay blank instead of repeating an item.
+
+- **On the Dial**: *Settings → Menu Items* has one row per item. Turn the
+  knob to switch the focused row on or off (green = on); tap a row or press
+  the button to focus the next one.
+- **From Home Assistant**: the device has five switches, *Menu Timer*,
+  *Menu Lights*, *Menu Radiators*, *Menu AC*, *Menu Music* (entity IDs like
+  `switch.m5stack_dial_menu_timer`, under the device's *Configuration*).
+  Usable in automations too, e.g. hide AC in winter.
+
+Both change the same setting, and it is saved on the Dial across reboots
+(new installs start with everything on). The switches are template
+switches `menu_show_*` in `src/pages/menu.yaml`; `menu_step` moves the
+selection to the next shown item, and the menu jumps there by itself if
+the item it was on gets hidden. A hidden page still works, it is only left
+out of the menu.
 
 ## Dial sensitivity
 
@@ -173,6 +197,7 @@ Every debounced interaction uses the same threshold and pattern:
 |---|---|
 | AC temperature and fan | `air_encoder_step_accum` (`src/pages/air.yaml`) |
 | Motion Alert's focused row | `motion_alert_encoder_accum` |
+| Menu Items' focused row | `menu_items_encoder_accum` |
 | Display Timeout, Menu Timeout, Dial Sensitivity | `display_timeout_encoder_accum`, `menu_timeout_encoder_accum`, `dial_sensitivity_encoder_accum` |
 | Main, Lights, Radiators and Settings carousels | `menu_scroll_encoder_accum` (`src/pages/main.yaml`; shared, only one carousel is open at a time) |
 

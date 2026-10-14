@@ -94,7 +94,89 @@ globals:
     type: bool
     initial_value: 'false'
 
+# Which items the main menu shows (Settings -> Menu Items on the Dial, or these
+# switches in Home Assistant). Saved on the device. Settings and Home are
+# always shown, so there's always a way back.
+switch:
+  - platform: template
+    id: menu_show_timer
+    name: "Menu Timer"
+    icon: mdi:timer-outline
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: menu_items_changed
+    on_turn_off:
+      - script.execute: menu_items_changed
+  - platform: template
+    id: menu_show_lights
+    name: "Menu Lights"
+    icon: mdi:lightbulb-outline
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: menu_items_changed
+    on_turn_off:
+      - script.execute: menu_items_changed
+  - platform: template
+    id: menu_show_radiators
+    name: "Menu Radiators"
+    icon: mdi:radiator
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: menu_items_changed
+    on_turn_off:
+      - script.execute: menu_items_changed
+  - platform: template
+    id: menu_show_ac
+    name: "Menu AC"
+    icon: mdi:air-conditioner
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: menu_items_changed
+    on_turn_off:
+      - script.execute: menu_items_changed
+  - platform: template
+    id: menu_show_music
+    name: "Menu Music"
+    icon: mdi:music
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: menu_items_changed
+    on_turn_off:
+      - script.execute: menu_items_changed
+
 script:
+  # A menu item was switched on or off: redraw whatever shows it.
+  - id: menu_items_changed
+    then:
+      - lambda: |-
+          if (id(in_menu) && !id(menu_animating)) id(refresh_menu).execute();
+          if (id(in_menu_items)) id(refresh_menu_items).execute();
+          if (id(in_settings_menu)) id(refresh_settings_menu).execute();
+
+  # Move menu_sel to the next (dir = 1) or previous (dir = -1) shown item.
+  - id: menu_step
+    parameters:
+      dir: int
+    then:
+      - lambda: |-
+          const bool VIS[7] = {id(menu_show_timer).state, id(menu_show_lights).state, id(menu_show_radiators).state, id(menu_show_ac).state, id(menu_show_music).state, true, true};
+          int s = id(menu_sel);
+          for (int k = 0; k < 7; k++) {
+            s = ((s + dir) % 7 + 7) % 7;
+            if (VIS[s]) break;
+          }
+          id(menu_sel) = s;
+
   - id: open_menu
     then:
       - globals.set: {id: in_menu, value: 'true'}
@@ -229,8 +311,7 @@ script:
                   lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 7;
-                  id(menu_sel) = ((id(menu_sel) - 1) % n + n) % n;
+                  id(menu_step).execute(-1);
                   id(refresh_menu).execute();
                   id(menu_animating) = false;
                 });
@@ -349,7 +430,7 @@ script:
                   lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(menu_sel) = (id(menu_sel) + 1) % 7;
+                  id(menu_step).execute(1);
                   id(refresh_menu).execute();
                   id(menu_animating) = false;
                 });
@@ -453,7 +534,19 @@ script:
             0x1E2024,  // Settings
             0x0D1537   // Home
           };
+          // Only the items switched on (menu_show_*) take part. vis[] lists
+          // their indices; p is the selected item's place in that list.
+          const bool VIS[7] = {id(menu_show_timer).state, id(menu_show_lights).state, id(menu_show_radiators).state, id(menu_show_ac).state, id(menu_show_music).state, true, true};
+          if (!VIS[id(menu_sel)]) id(menu_step).execute(1);
           int sel = id(menu_sel);
+          int vis[7];
+          int N = 0;
+          int p = 0;
+          for (int i = 0; i < ITEM_N; i++) {
+            if (!VIS[i]) continue;
+            if (i == sel) p = N;
+            vis[N++] = i;
+          }
 
           lv_obj_t* slots[5] = {
             id(slot_far_up), id(slot_near_up), id(slot_center),
@@ -461,7 +554,13 @@ script:
           };
 
           for (int slot = 0; slot < SLOT_N; slot++) {
-            int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+            int di = vis[((p + OFFSETS[slot]) % N + N) % N];
+            // With fewer than 5 items, hide the slots that would repeat one.
+            if (OFFSETS[slot] >= -((N - 1) / 2) && OFFSETS[slot] <= N / 2) {
+              lv_obj_clear_flag(slots[slot], LV_OBJ_FLAG_HIDDEN);
+            } else {
+              lv_obj_add_flag(slots[slot], LV_OBJ_FLAG_HIDDEN);
+            }
 
             const float off = OFFSETS[slot];
             float dy = arc_dy(off);
@@ -550,15 +649,19 @@ script:
             lv_obj_set_style_border_width(id(slot_center), 0, LV_PART_MAIN);
           }
 
-          // Indicator dots: selected = triangle shape (wide-bottom trapezoid via radius=0)
-          // Use width to simulate triangle: selected wider at bottom
-          const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
+          // Indicator dots: one per shown item, centred; selected = rotated square
           lv_obj_t* sdots[7] = {
             id(sdot_0), id(sdot_1), id(sdot_2), id(sdot_3), id(sdot_4), id(sdot_5), id(sdot_6)
           };
           for (int d = 0; d < ITEM_N; d++) {
-            if (d == sel) {
-              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
+            if (d >= N) {
+              lv_obj_add_flag(sdots[d], LV_OBJ_FLAG_HIDDEN);
+              continue;
+            }
+            lv_obj_clear_flag(sdots[d], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_align(sdots[d], LV_ALIGN_RIGHT_MID, -10, d * 14 - (N - 1) * 7);
+            if (d == p) {
+              lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[vis[d]]), LV_PART_MAIN);
               lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
               lv_obj_set_size(sdots[d], 8, 8);
               lv_obj_set_style_radius(sdots[d], 0, LV_PART_MAIN);

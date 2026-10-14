@@ -158,6 +158,10 @@ script:
             id(close_motion_alert).execute();
             return;
           }
+          if (id(in_menu_items)) {
+            id(close_menu_items).execute();
+            return;
+          }
           if (id(in_settings_menu)) {
             id(close_settings_menu).execute();
             return;
@@ -322,6 +326,16 @@ sensor:
                       }
             - if:
                 condition:
+                  lambda: 'return id(in_menu_items);'
+                then:
+                  - lambda: |-
+                      id(menu_items_encoder_accum) += 1;
+                      if (id(menu_items_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(menu_items_encoder_accum) = 0;
+                        id(menu_items_toggle).execute();
+                      }
+            - if:
+                condition:
                   lambda: 'return id(in_settings_menu);'
                 then:
                   - lambda: |-
@@ -350,7 +364,7 @@ sensor:
                            !id(in_radiators_menu) && !id(in_radiator_room) &&
                            !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
                            !id(in_dial_sensitivity) &&
-                           !id(in_buzzer_volume) && !id(in_motion_alert) &&
+                           !id(in_buzzer_volume) && !id(in_motion_alert) && !id(in_menu_items) &&
                            !id(in_timer);
                 then:
                   - lambda: |-
@@ -490,6 +504,16 @@ sensor:
                       }
             - if:
                 condition:
+                  lambda: 'return id(in_menu_items);'
+                then:
+                  - lambda: |-
+                      id(menu_items_encoder_accum) -= 1;
+                      if (id(menu_items_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(menu_items_encoder_accum) = 0;
+                        id(menu_items_toggle).execute();
+                      }
+            - if:
+                condition:
                   lambda: 'return id(in_settings_menu);'
                 then:
                   - lambda: |-
@@ -518,7 +542,7 @@ sensor:
                            !id(in_radiators_menu) && !id(in_radiator_room) &&
                            !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
                            !id(in_dial_sensitivity) &&
-                           !id(in_buzzer_volume) && !id(in_motion_alert) &&
+                           !id(in_buzzer_volume) && !id(in_motion_alert) && !id(in_menu_items) &&
                            !id(in_timer);
                 then:
                   - lambda: |-
@@ -667,6 +691,8 @@ binary_sensor:
                             id(settings_menu_confirm).execute();
                           } else if (id(in_motion_alert)) {
                             id(motion_alert_next_field).execute();
+                          } else if (id(in_menu_items)) {
+                            id(menu_items_next_field).execute();
                           } else if (id(in_timer)) {
                             id(timer_toggle).execute();
                           }

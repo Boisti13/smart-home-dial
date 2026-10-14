@@ -53,6 +53,15 @@ globals:
   - id: motion_alert_encoder_accum
     type: int
     initial_value: '0'   # debounces the encoder so one physical click = one step change
+  - id: in_menu_items
+    type: bool
+    initial_value: 'false'
+  - id: menu_items_field
+    type: int
+    initial_value: '0'   # which row is focused on the Menu Items page: 0=Timer ... 4=Music
+  - id: menu_items_encoder_accum
+    type: int
+    initial_value: '0'   # debounces the encoder so one physical click = one step change
   - id: motion_alarm_active
     type: bool
     initial_value: 'false'
@@ -98,7 +107,7 @@ interval:
                           !id(in_radiators_menu) && !id(in_radiator_room) &&
                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
                           !id(in_dial_sensitivity) &&
-                          !id(in_buzzer_volume) && !id(in_motion_alert) &&
+                          !id(in_buzzer_volume) && !id(in_motion_alert) && !id(in_menu_items) &&
                           !id(in_timer));
           if (!on_clock) {
             uint32_t elapsed = millis() - id(last_activity_ms);
@@ -181,6 +190,7 @@ script:
       - globals.set: {id: in_dial_sensitivity, value: 'false'}
       - globals.set: {id: in_buzzer_volume, value: 'false'}
       - globals.set: {id: in_motion_alert, value: 'false'}
+      - globals.set: {id: in_menu_items, value: 'false'}
       - lambda: 'id(last_activity_ms) = millis();'
       - lvgl.page.show:
           id: page_clock
@@ -293,7 +303,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 5;
+                  int n = 6;
                   id(settings_menu_sel) = ((id(settings_menu_sel) - 1) % n + n) % n;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
@@ -387,7 +397,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 5;
+                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 6;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
                 });
@@ -402,12 +412,13 @@ script:
           else if (sel == 1) { id(open_menu_timeout).execute(); }
           else if (sel == 2) { id(open_buzzer_volume).execute(); }
           else if (sel == 3) { id(open_motion_alert).execute(); }
-          else { id(open_dial_sensitivity).execute(); }
+          else if (sel == 4) { id(open_dial_sensitivity).execute(); }
+          else { id(open_menu_items).execute(); }
 
   - id: refresh_settings_menu
     then:
       - lambda: |-
-          const int ITEM_N = 5;
+          const int ITEM_N = 6;
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -427,17 +438,22 @@ script:
           const char* sub_motion = id(motion_alert_enabled) ? "On" : "Off";
           static char sub_sensitivity[16];
           snprintf(sub_sensitivity, sizeof(sub_sensitivity), "%d", id(encoder_step_threshold));
+          static char sub_items[16];
+          int items_on = id(menu_show_timer).state + id(menu_show_lights).state + id(menu_show_radiators).state +
+                         id(menu_show_ac).state + id(menu_show_music).state;
+          snprintf(sub_items, sizeof(sub_items), "%d of 5 shown", items_on);
 
-          const char* TITLES[5] = {"Display Timeout", "Menu Timeout", "Buzzer", "Motion Alert", "Dial Sensitivity"};
-          const char* SUBTITLES[5] = {sub_display, sub_menu, sub_buzzer, sub_motion, sub_sensitivity};
-          const uint32_t ACCENT_COLORS[5] = {0x9CA3AF, 0x38BDF8, 0x4ADE80, 0xF87171, 0x38BDF8};
-          const uint32_t PILL_COLORS[5] = {0x1E2024, 0x0F1E2A, 0x0A2A14, 0x2A1414, 0x0F1E2A};
-          const lv_img_dsc_t* IMGS[5] = {
+          const char* TITLES[6] = {"Display Timeout", "Menu Timeout", "Buzzer", "Motion Alert", "Dial Sensitivity", "Menu Items"};
+          const char* SUBTITLES[6] = {sub_display, sub_menu, sub_buzzer, sub_motion, sub_sensitivity, sub_items};
+          const uint32_t ACCENT_COLORS[6] = {0x9CA3AF, 0x38BDF8, 0x4ADE80, 0xF87171, 0x38BDF8, 0x576BFE};
+          const uint32_t PILL_COLORS[6] = {0x1E2024, 0x0F1E2A, 0x0A2A14, 0x2A1414, 0x0F1E2A, 0x0D1537};
+          const lv_img_dsc_t* IMGS[6] = {
             id(menu_img_timer)->get_lv_image_dsc(),
             id(menu_img_timer)->get_lv_image_dsc(),
             id(menu_img_speaker)->get_lv_image_dsc(),
             id(menu_img_motion_alert)->get_lv_image_dsc(),
-            id(menu_img_timer)->get_lv_image_dsc()
+            id(menu_img_timer)->get_lv_image_dsc(),
+            id(menu_img_home)->get_lv_image_dsc()
           };
 
           int sel = id(settings_menu_sel);
@@ -514,8 +530,7 @@ script:
             }
           }
 
-          const int dot_offsets[5] = {-28, -14, 0, 14, 28};
-          lv_obj_t* sdots[5] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2), id(sm_sdot_3), id(sm_sdot_4)};
+          lv_obj_t* sdots[6] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2), id(sm_sdot_3), id(sm_sdot_4), id(sm_sdot_5)};
           for (int d = 0; d < ITEM_N; d++) {
             if (d == sel) {
               lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
@@ -769,6 +784,53 @@ script:
             lv_color_hex(f == 2 ? focus_color : dim_color), LV_STATE_DEFAULT);
       - script.execute: refresh_settings_menu
 
+  - id: open_menu_items
+    then:
+      - globals.set: {id: in_menu_items, value: 'true'}
+      - globals.set: {id: menu_items_field, value: '0'}
+      - globals.set: {id: menu_items_encoder_accum, value: '0'}
+      - script.execute: refresh_menu_items
+      - lvgl.page.show:
+          id: page_menu_items
+          animation: MOVE_LEFT
+
+  - id: close_menu_items
+    then:
+      - globals.set: {id: in_menu_items, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: menu_items_next_field
+    then:
+      - globals.set: {id: menu_items_encoder_accum, value: '0'}
+      - lambda: 'id(menu_items_field) = (id(menu_items_field) + 1) % 5;'
+      - script.execute: refresh_menu_items
+
+  # Either direction of the knob switches the focused item on or off. The
+  # switch's on_turn_on/off redraws this page (menu_items_changed).
+  - id: menu_items_toggle
+    then:
+      - lambda: |-
+          switch_::Switch* SW[5] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
+                                    id(menu_show_ac), id(menu_show_music)};
+          SW[id(menu_items_field)]->toggle();
+
+  - id: refresh_menu_items
+    then:
+      - lambda: |-
+          const char* NAMES[5] = {"Timer", "Lights", "Radiators", "AC", "Music"};
+          switch_::Switch* SW[5] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
+                                    id(menu_show_ac), id(menu_show_music)};
+          lv_obj_t* LBLS[5] = {id(lbl_menu_items_row_0), id(lbl_menu_items_row_1), id(lbl_menu_items_row_2),
+                               id(lbl_menu_items_row_3), id(lbl_menu_items_row_4)};
+          static char bufs[5][24];
+          int f = id(menu_items_field);
+          for (int i = 0; i < 5; i++) {
+            snprintf(bufs[i], sizeof(bufs[i]), "%s: %s", NAMES[i], SW[i]->state ? "ON" : "OFF");
+            lv_label_set_text(LBLS[i], bufs[i]);
+            uint32_t c = (i == f) ? (SW[i]->state ? 0x4ADE80 : 0xFFFFFF) : 0x6B7280;
+            lv_obj_set_style_text_color(LBLS[i], lv_color_hex(c), LV_STATE_DEFAULT);
+          }
+
   - id: start_motion_alarm
     then:
       - globals.set: {id: motion_alarm_active, value: 'true'}
@@ -995,7 +1057,7 @@ lvgl:
                   id: sm_sdot_0
                   align: RIGHT_MID
                   x: -10
-                  y: -28
+                  y: -35
                   width: 5
                   height: 5
                   radius: 3
@@ -1008,7 +1070,7 @@ lvgl:
                   id: sm_sdot_1
                   align: RIGHT_MID
                   x: -10
-                  y: -14
+                  y: -21
                   width: 5
                   height: 5
                   radius: 3
@@ -1021,7 +1083,7 @@ lvgl:
                   id: sm_sdot_2
                   align: RIGHT_MID
                   x: -10
-                  y: 0
+                  y: -7
                   width: 5
                   height: 5
                   radius: 3
@@ -1034,7 +1096,7 @@ lvgl:
                   id: sm_sdot_3
                   align: RIGHT_MID
                   x: -10
-                  y: 14
+                  y: 7
                   width: 5
                   height: 5
                   radius: 3
@@ -1047,7 +1109,20 @@ lvgl:
                   id: sm_sdot_4
                   align: RIGHT_MID
                   x: -10
-                  y: 28
+                  y: 21
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: sm_sdot_5
+                  align: RIGHT_MID
+                  x: -10
+                  y: 35
                   width: 5
                   height: 5
                   radius: 3
@@ -1348,6 +1423,158 @@ lvgl:
                   align: CENTER
                   y: 88
                   text: "Turn: adjust"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+    - id: page_menu_items
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_menu_items
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -92
+                  text: "Menu Items"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: -62
+                  width: 200
+                  height: 28
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: menu_items_field, value: '0'}
+                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
+                    - script.execute: refresh_menu_items
+                  widgets:
+                    - label:
+                        id: lbl_menu_items_row_0
+                        align: CENTER
+                        text: ""
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: -34
+                  width: 200
+                  height: 28
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: menu_items_field, value: '1'}
+                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
+                    - script.execute: refresh_menu_items
+                  widgets:
+                    - label:
+                        id: lbl_menu_items_row_1
+                        align: CENTER
+                        text: ""
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: -6
+                  width: 200
+                  height: 28
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: menu_items_field, value: '2'}
+                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
+                    - script.execute: refresh_menu_items
+                  widgets:
+                    - label:
+                        id: lbl_menu_items_row_2
+                        align: CENTER
+                        text: ""
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: 22
+                  width: 200
+                  height: 28
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: menu_items_field, value: '3'}
+                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
+                    - script.execute: refresh_menu_items
+                  widgets:
+                    - label:
+                        id: lbl_menu_items_row_3
+                        align: CENTER
+                        text: ""
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - obj:
+                  align: CENTER
+                  y: 50
+                  width: 200
+                  height: 28
+                  bg_opa: TRANSP
+                  border_width: 0
+                  clickable: true
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  on_click:
+                    - globals.set: {id: menu_items_field, value: '4'}
+                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
+                    - script.execute: refresh_menu_items
+                  widgets:
+                    - label:
+                        id: lbl_menu_items_row_4
+                        align: CENTER
+                        text: ""
+                        text_font: font_menu_item
+                        text_color: 0x6B7280
+                        text_align: CENTER
+
+              - label:
+                  align: CENTER
+                  y: 84
+                  text: "Tap: next  Turn: on/off"
                   text_font: font_lbl
                   text_color: 0x6B7280
                   text_align: CENTER

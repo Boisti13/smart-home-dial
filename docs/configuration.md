@@ -108,6 +108,10 @@ ESPHome*), open its options and turn on **Allow the device to perform Home
 Assistant actions**. Without it, every button that changes something in
 Home Assistant does nothing.
 
+The Dial also brings its own entities into Home Assistant: among others the
+five **Menu** switches (*Menu Timer*, *Menu Lights*, …) that hide pages from
+the main menu ([pages.md → Menu items](pages.md#menu-items)).
+
 ## Music player
 
 Choose the entity that actually plays audio, not the Dial itself. A good

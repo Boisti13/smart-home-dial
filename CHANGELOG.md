@@ -6,6 +6,14 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v1.7.0 — 2026-10-14
+
+### Added
+- **Choose what the main menu shows**: Timer, Lights, Radiators, AC and Music can each be switched off. On the Dial under *Settings → Menu Items* (turn to switch the focused row, tap for the next row), or in Home Assistant with the new switches *Menu Timer*, *Menu Lights*, *Menu Radiators*, *Menu AC* and *Menu Music*. Saved across reboots; Settings and Home always stay ([how](docs/pages.md#menu-items)).
+
+### Changed
+- The main menu's dots show one dot per item that is switched on, centred. With fewer than five items, the carousel leaves the empty places blank instead of repeating items.
+
 ## v1.6.0 — 2026-10-14
 
 ### Added
