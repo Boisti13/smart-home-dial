@@ -16,13 +16,18 @@ change it. Entity IDs are set in `src/main/entities.yaml`; see
 - [Menu navigation](#menu-navigation)
 - [Tunable defaults](#tunable-defaults)
 - [Battery](#battery)
+- [NFC](#nfc)
 - [Fridge (disabled)](#fridge-disabled)
 
 ## Clock
 
 `src/pages/main.yaml`. Time and date come from the PCF8563 RTC, which is set
-from Home Assistant whenever the Dial connects. Weather, humidity, pressure
-and wind are attributes of `weather_entity`. AQI is the **state** of its own
+from Home Assistant whenever the Dial connects. Temperature, humidity and
+pressure are the states of three sensors (`outdoor_temperature_entity`,
+`outdoor_humidity_entity`, `outdoor_pressure_entity`); in the owner's setup
+these are the *Virtual Outdoor* template sensors, which take the coldest of
+three outdoor sensors (the sun warms the others) and Netatmo's pressure. Wind
+is the `wind_speed` attribute of `weather_entity`. AQI is the **state** of its own
 sensor (`aqi_entity`), because most weather integrations have no `aqi`
 attribute. The time zone is set twice in this file (`time:` → `rtctime` and
 `esptime`), see [configuration.md](configuration.md#time-zone).
@@ -113,19 +118,22 @@ component re-applies its own gain on every note, so `output.set_level()` and
 ## Motion Alert
 
 `src/pages/settings.yaml`. When `motion_alarm_entity` turns on, the buzzer
-sounds and the screen flashes red with *Check Bedroom*. One Settings entry
+sounds and the screen flashes red with `motion_alarm_message` (default
+*Check Bedroom*, set in `src/main/entities.yaml`). One Settings entry
 with three rows: **Enabled**, **Duration**, **Cooldown**. Tap the front button
 or touch a row to focus it, then turn the knob (on/off, or ±5 s).
 
 - **Duration** (default 20 s, `motion_alarm_duration_s`): how long the buzzer
-  and flash run. The alarm stops by itself after that; there is no way to
-  stop it early yet.
+  and flash run. The alarm stops by itself after that.
+- **Silence it sooner** with a touch, a turn of the knob or a press of the
+  button. That input does nothing else: the overlay catches the touch, and
+  the turn or press is swallowed like the one that wakes the screen.
 - **Cooldown** (default 10 s, `motion_alarm_cooldown_s`): the minimum time
   between two alarms, so continued motion doesn't restart it each time the
   sensor fires again.
 - The red overlay **fades** in and out every 500 ms. A hard show/hide tore
-  visibly on this display's small LVGL render buffer. Message text and color
-  are in the `motion_alarm_overlay` widget under `lvgl: top_layer:`.
+  visibly on this display's small LVGL render buffer. The color is in the
+  `motion_alarm_overlay` widget under `lvgl: top_layer:`.
 - Unlike the window sensors, this `binary_sensor` deliberately does **not**
   set `trigger_on_initial_state`: a sensor that is already on at boot should
   not set off an alarm, only new motion should.
@@ -210,6 +218,13 @@ Any label can reuse `id(scroll_anim_speed)` instead of its own speed.
 The M5Stack Dial V1.1 needs its hold pin high to stay on from battery.
 `dial.yaml` turns on GPIO46 first thing at boot; the `power_hold` switch is
 defined in `src/main/hardware.yaml`.
+
+## NFC
+
+The RC522 reader (`src/main/hardware.yaml`) sends every scanned card or tag
+to Home Assistant as a tag scan (`homeassistant.tag_scanned`). New tags show
+up under *Settings → Tags* and can trigger automations ("Tag is scanned").
+Needs *Allow the device to perform Home Assistant actions*.
 
 ## Fridge (disabled)
 

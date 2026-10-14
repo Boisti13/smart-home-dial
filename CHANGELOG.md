@@ -6,6 +6,17 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v1.5.0 — 2026-10-14
+
+### Added
+- **Silence a Motion Alert** with a touch, a turn of the knob or a press of the button, instead of waiting out its duration. That input does nothing else.
+- **Your own Motion Alert text**: `motion_alarm_message` in `src/main/entities.yaml` (default *Check Bedroom*).
+- **NFC tags in Home Assistant**: cards and tags held to the Dial show up under *Settings → Tags* and can trigger automations.
+
+### Changed
+- **The clock shows your own outdoor sensors**: temperature, humidity and pressure come from three new substitutions (`outdoor_temperature_entity`, `outdoor_humidity_entity`, `outdoor_pressure_entity`), set to the *Virtual Outdoor* template sensors. Before, all three came from the met.no forecast. Wind still comes from `weather_entity`.
+- The log level is `INFO` instead of `DEBUG`: less log traffic over Wi-Fi and less CPU time spent formatting messages.
+
 ## v1.4.1 — 2026-10-14
 
 ### Fixed

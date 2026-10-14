@@ -817,13 +817,13 @@ lvgl:
           bg_color: 0xCC0000
           bg_opa: COVER
           border_width: 0
-          clickable: false
+          clickable: true   # absorbs the touch that silences the alarm
           scrollbar_mode: "OFF"
           hidden: true
           widgets:
             - label:
                 align: CENTER
-                text: "Check Bedroom"
+                text: "${motion_alarm_message}"
                 text_font: font_menu_item
                 text_color: 0xFFFFFF
                 text_align: CENTER

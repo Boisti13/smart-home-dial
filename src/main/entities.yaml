@@ -1,6 +1,9 @@
 substitutions:
   # Change these to match your Home Assistant instance before flashing.
   weather_entity: weather.forecast_home
+  outdoor_temperature_entity: sensor.virtual_outdoor_temperature
+  outdoor_humidity_entity: sensor.virtual_outdoor_humidity
+  outdoor_pressure_entity: sensor.virtual_outdoor_pressure
   aqi_entity: sensor.kaiserslautern_rathausplatz_germany_air_quality_index
   climate_entity: climate.pinguino
   music_player_entity: media_player.speaker_1_sendspin_media_player
@@ -20,3 +23,4 @@ substitutions:
   window_arthur_entity: binary_sensor.arthur_window_contact
   window_living_entity: binary_sensor.balcony_door_contact
   motion_alarm_entity: binary_sensor.cam_pt2_motion_alarm
+  motion_alarm_message: "Check Bedroom"   # shown on the red Motion Alert screen

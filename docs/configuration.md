@@ -45,7 +45,10 @@ Edit `src/main/entities.yaml`. Find the IDs under *Developer Tools → States*.
 
 ```yaml
 substitutions:
-  weather_entity: weather.your_location
+  outdoor_temperature_entity: sensor.your_outdoor_temperature
+  outdoor_humidity_entity: sensor.your_outdoor_humidity
+  outdoor_pressure_entity: sensor.your_outdoor_pressure
+  weather_entity: weather.your_location        # only wind speed is used
   aqi_entity: sensor.your_air_quality_index
   climate_entity: climate.your_ac
   music_player_entity: media_player.your_player
@@ -65,12 +68,15 @@ substitutions:
   window_arthur_entity: binary_sensor.your_arthur_window_contact
   window_living_entity: binary_sensor.your_living_room_window_contact
   motion_alarm_entity: binary_sensor.your_motion_sensor
+  motion_alarm_message: "Check Bedroom"         # text on the red alarm screen
 ```
 
 - **Lights and radiators** are fixed at five lights + one switch and five
   rooms, with names written into the page files. Fewer devices, other names
   or another count: see [pages.md → Lights](pages.md#lights) and
   [pages.md → Radiators](pages.md#radiators).
+- **Outdoor values** are plain sensor states. Without own sensors, a template
+  sensor on your weather entity works (`{{ state_attr('weather.home', 'temperature') }}`).
 - **AQI** is read from a sensor's state, not a weather attribute. The
   [WAQI](https://www.home-assistant.io/integrations/waqi/) integration is a
   simple source.
@@ -133,4 +139,4 @@ PowerShell (ESP-IDF refuses Git Bash/MSYS) and from a short path such as
 | `src/pages/ha_lights.yaml`, `src/pages/menu.yaml` | Lights: entities and display names |
 | `src/pages/radiators.yaml`, `src/pages/menu.yaml` | Radiators: rooms, entities, window sensors |
 | `src/pages/music.yaml` | Music page layout |
-| `src/pages/settings.yaml` | Ranges of the Settings entries, Motion Alert message |
+| `src/pages/settings.yaml` | Ranges of the Settings entries, Motion Alert color |

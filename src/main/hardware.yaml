@@ -10,6 +10,11 @@ rc522_i2c:
   - id: nfc_reader
     i2c_id: internal_i2c
     address: 0x28
+    # Every scanned card/tag shows up in Home Assistant under Settings -> Tags,
+    # usable as an automation trigger (needs "Allow the device to perform
+    # Home Assistant actions").
+    on_tag:
+      - homeassistant.tag_scanned: !lambda 'return x;'
 
 switch:
   # M5Dial V1.1 battery power hold. GPIO46 must stay HIGH after WAKE,
@@ -97,6 +102,10 @@ touchscreen:
           }
           if (id(in_timer) && id(timer_alarm_active)) {
             id(dismiss_timer_alarm).execute();
+          }
+          if (id(motion_alarm_active)) {
+            id(stop_motion_alarm).execute();
+            id(touch_woke_display) = true;  // swallow the rest of this touch (no swipe)
           }
           if (id(swipe_start_x) < 0) {
             id(swipe_start_x) = touch.x;
