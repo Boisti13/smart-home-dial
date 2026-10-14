@@ -15,7 +15,8 @@ those notes.
   release unless asked. "Make a new release" means the
   [release routine](docs/development.md#releases).
 - **Ask before side effects**: pushing, flashing, or touching Home Assistant.
-  Reading is fine.
+  Reading is fine. One standing exception: copying a new version to Home
+  Assistant's ESPHome folder (see *Home Assistant copy* below).
 - **One change = one commit with everything it needs**: the YAML, the
   version bump, the docs and the CHANGELOG entry. No "docs later".
 - **The owner compiles and flashes.** Validate locally; never upload to the
@@ -49,9 +50,13 @@ ssh devbox 'cd ~/dev/smart-home-dial && git pull &&
 - **Home Assistant copy**: the ESPHome app builds from
   `/homeassistant/esphome/smart-home-dial/` (`dial.yaml`, `src/`) via the
   stub `/homeassistant/esphome/m5stack-dialv1.yaml`, which sets
-  `dial_dir: ./smart-home-dial`. After a change: back up the old folder
-  (`/config/project-backups/esphome/`), copy the new `dial.yaml` and `src/`
-  over (ask first), let the owner flash. Every local file path in the YAML
+  `dial_dir: ./smart-home-dial`. **Every new version goes there unasked**
+  (owner, 2026-10-14), so the owner can flash it straight away: once it is
+  pushed to `dev` and compiles on the dev box, back up the old folder
+  (`tar czf /config/project-backups/esphome/smart-home-dial/smart-home-dial-vX.Y.Z.tar.gz.bak-<timestamp>`),
+  replace `dial.yaml` and `src/` with `git archive <commit> dial.yaml src`
+  (remove the old `src/` first so deleted files go too), and check that the
+  files match. Then the owner flashes. Every local file path in the YAML
   starts with `${dial_dir}/`, or the HA build breaks.
 - Hardware facts: no PSRAM (keep images and LVGL buffers small); the encoder
   gives ~4 raw ticks per click (debounce value pages through
