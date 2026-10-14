@@ -9,6 +9,7 @@ packages:
   hardware:    !include src/main/hardware.yaml
   entities:    !include src/main/entities.yaml
   globals:     !include src/main/globals.yaml
+  diagnostics: !include src/main/diagnostics.yaml
   load_page:   !include src/pages/load.yaml
   clock_page:  !include src/pages/main.yaml
   menu_page:   !include src/pages/menu.yaml
@@ -17,8 +18,6 @@ packages:
   radiators_page: !include src/pages/radiators.yaml
   air_page:    !include src/pages/air.yaml
   music_page:  !include src/pages/music.yaml
-  # Fridge menu disabled for now; page kept intact for reference/restoration.
-  # fridge_page: !include src/pages/fridge.yaml
   timer_page:  !include src/pages/timer.yaml
   settings_page: !include src/pages/settings.yaml
 
@@ -27,7 +26,7 @@ esphome:
   friendly_name: M5Stack Dial
   project:
     name: "smart-home-dial.firmware"
-    version: "1.8.0"
+    version: "2.0.0"
   on_boot:
     - priority: 800
       then:
@@ -72,6 +71,8 @@ api:
           - globals.set:
               id: ha_connected
               value: 'false'
+          # Values on screen are now stale and buttons do nothing: say so.
+          - lvgl.widget.show: ha_offline_badge
 
 ota:
   - platform: esphome

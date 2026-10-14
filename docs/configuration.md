@@ -71,29 +71,39 @@ substitutions:
   aqi_entity: sensor.your_air_quality_index
   climate_entity: climate.your_ac
   music_player_entity: media_player.your_player
-  light_kitchen_entity: light.your_light_1
-  light_bedroom_strip_entity: light.your_light_2
-  light_bedroom_bulb_entity: light.your_light_3
-  light_living_entity: light.your_light_4
-  light_test_strip_entity: light.your_light_5
-  switch_test_entity: switch.your_switch
-  radiator_kitchen_entity: climate.your_kitchen_radiator
-  radiator_bedroom_entity: climate.your_bedroom_radiator
-  radiator_arthur_entity: climate.your_arthur_radiator
-  radiator_living_entity: climate.your_living_room_radiator
-  radiator_bathroom_entity: climate.your_bathroom_radiator
-  window_kitchen_entity: binary_sensor.your_kitchen_window_contact
-  window_bedroom_entity: binary_sensor.your_bedroom_window_contact
-  window_arthur_entity: binary_sensor.your_arthur_window_contact
-  window_living_entity: binary_sensor.your_living_room_window_contact
+
+  # Lights: up to 6 after the Dial Ring; light.* dims, switch.* is on/off
+  light_count: "2"
+  light_0_name: "Kitchen"
+  light_0_entity: light.your_kitchen
+  light_1_name: "Desk"
+  light_1_entity: switch.your_desk_lamp
+  light_2_name: "Unused"             # slots above light_count are ignored,
+  light_2_entity: light.your_kitchen  # but need a valid entity ID
+  # ... light_3 to light_5 the same way
+
+  # Radiators: up to 5 rooms
+  radiator_count: "2"
+  radiator_0_name: "Living Room"
+  radiator_0_entity: climate.your_living_room
+  radiator_0_window: binary_sensor.your_balcony_door
+  radiator_1_name: "Bathroom"
+  radiator_1_entity: climate.your_bathroom
+  radiator_1_window: binary_sensor.none   # no contact sensor: no window icon
+  # ... radiator_2 to radiator_4 the same way (unused: repeat any entity)
+  radiator_presets: '"comfort", "eco", "frost", "boost"'
   motion_alarm_entity: binary_sensor.your_motion_sensor
   motion_alarm_message: "Check Bedroom"         # text on the red alarm screen
 ```
 
-- **Lights and radiators** are fixed at five lights + one switch and five
-  rooms, with names written into the page files. Fewer devices, other names
-  or another count: see [pages.md → Lights](pages.md#lights) and
-  [pages.md → Radiators](pages.md#radiators).
+- **Lights and radiators** are slots: `*_count` says how many are used,
+  names and entities are set per slot. Every slot needs a valid entity ID,
+  even an unused one. Names are shown with the Dial's fonts: plain letters,
+  digits and spaces (no umlauts). Details: [pages.md → Lights](pages.md#lights)
+  and [pages.md → Radiators](pages.md#radiators).
+- **Presets** (`radiator_presets`) are what the front button cycles through
+  on a room page; each must be in the climate's `preset_modes`. The quotes
+  are part of the value (it becomes a C++ list).
 - **Outdoor values** are plain sensor states. Without own sensors, a template
   sensor on your weather entity works (`{{ state_attr('weather.home', 'temperature') }}`).
 - **AQI** is read from a sensor's state, not a weather attribute. The

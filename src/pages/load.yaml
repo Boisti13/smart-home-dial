@@ -87,6 +87,7 @@ script:
 
   - id: on_ha_connected
     then:
+      - lvgl.widget.hide: ha_offline_badge
       - lambda: |-
           if (!id(ha_connected)) {
             id(ha_connected) = true;
@@ -223,3 +224,27 @@ lvgl:
                       bg_color: col_blue_track
                       indicator:
                         bg_color: col_blue
+
+      # "HA offline" pill, shown on every page while Home Assistant is
+      # disconnected (dial.yaml: api on_client_disconnected / on_ha_connected).
+      - obj:
+          id: ha_offline_badge
+          align: TOP_MID
+          y: 14
+          width: 76
+          height: 18
+          radius: 9
+          bg_color: 0x3A1010
+          bg_opa: COVER
+          border_width: 1
+          border_color: 0xF87171
+          pad_all: 0
+          clickable: false
+          scrollbar_mode: "OFF"
+          hidden: true
+          widgets:
+            - label:
+                align: CENTER
+                text: "HA offline"
+                text_font: font_lbl
+                text_color: 0xF87171

@@ -6,6 +6,28 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v2.0.0 — 2026-10-14
+
+**Breaking:** the light and radiator substitutions in `src/main/entities.yaml`
+changed (see *Changed*). Copy that part from the repository before updating.
+
+### Added
+- **Radiators show more**: the room temperature, an orange arc and *Heating* while the radiator is heating (`hvac_action`), and the active preset. The submenu tile reads *Heating 19.5°* / *On 21.4°* / *Off 21.4°*.
+- **Presets on the front button**: a short press on a room page steps through `radiator_presets` (default Comfort → Eco → Frost → Boost, Versatile Thermostat's names).
+- **HA offline marker**: a red *HA offline* pill on every page while Home Assistant is disconnected, instead of quietly showing old values.
+- **Diagnostics in Home Assistant**: *Wi-Fi Signal* and *Uptime* sensors, *Restart* and *Safe Mode Boot* buttons.
+
+### Changed
+- **Lights and rooms are configurable slots** in `src/main/entities.yaml`: `light_count` (1–6) with `light_N_name` / `light_N_entity`, and `radiator_count` (1–5) with `radiator_N_name` / `radiator_N_entity` / `radiator_N_window` (`binary_sensor.none` for no window sensor). Names are no longer written into the page files, and a smaller count leaves the carousel's spare places empty and centres its dots. Replaces `light_kitchen_entity` … `switch_test_entity` and `radiator_*_entity` / `window_*_entity`. Any `light.*` slot dims, any other entity is on/off.
+- **AC page without the swing button**: it only ever changed the screen (the Pinguino has no swing). Fan and power are centred.
+
+### Removed
+- The **Fridge page** (switched off since v1.3.0) with its seven icons and gallery photo. It stays in the git history.
+
+### Under the hood
+- `homeassistant.service:` → `homeassistant.action:` (11 places), ESPHome's current name.
+- The room and light pages read entity IDs and names from `*_list` substitutions built from the slots, so each list exists once.
+
 ## v1.8.0 — 2026-10-14
 
 ### Added

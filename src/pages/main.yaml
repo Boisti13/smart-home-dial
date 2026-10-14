@@ -179,12 +179,6 @@ script:
             id(close_timer).execute();
             return;
           }
-          // Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
-          // if (id(in_fridge)) {
-          //   id(in_fridge) = false;
-          //   id(open_menu).execute();
-          //   return;
-          // }
           id(enter_menu).execute();
 
 sensor:
@@ -344,12 +338,6 @@ sensor:
                         id(menu_scroll_encoder_accum) = 0;
                         id(settings_menu_scroll_down).execute();
                       }
-            # Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
-            # - if:
-            #     condition:
-            #       lambda: 'return id(in_fridge);'
-            #     then:
-            #       - script.execute: fridge_scroll_down
             - if:
                 condition:
                   lambda: 'return id(in_timer);'
@@ -522,12 +510,6 @@ sensor:
                         id(menu_scroll_encoder_accum) = 0;
                         id(settings_menu_scroll_up).execute();
                       }
-            # Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
-            # - if:
-            #     condition:
-            #       lambda: 'return id(in_fridge);'
-            #     then:
-            #       - script.execute: fridge_scroll_up
             - if:
                 condition:
                   lambda: 'return id(in_timer);'
@@ -693,6 +675,8 @@ binary_sensor:
                             id(motion_alert_next_field).execute();
                           } else if (id(in_menu_items)) {
                             id(menu_items_next_field).execute();
+                          } else if (id(in_radiator_room)) {
+                            id(radiator_next_preset).execute();
                           } else if (id(in_timer)) {
                             id(timer_toggle).execute();
                           }

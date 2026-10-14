@@ -13,6 +13,12 @@ image:
     transparency: alpha_channel
     resize: 20x20
 
+substitutions:
+  # Built from the radiator_N_* substitutions in src/main/entities.yaml.
+  radiator_entity_list: '"${radiator_0_entity}", "${radiator_1_entity}", "${radiator_2_entity}", "${radiator_3_entity}", "${radiator_4_entity}"'
+  radiator_name_list: '"${radiator_0_name}", "${radiator_1_name}", "${radiator_2_name}", "${radiator_3_name}", "${radiator_4_name}"'
+  radiator_window_list: '"${radiator_0_window}", "${radiator_1_window}", "${radiator_2_window}", "${radiator_3_window}", "${radiator_4_window}"'
+
 globals:
   - id: in_radiators_menu
     type: bool
@@ -34,136 +40,339 @@ globals:
     initial_value: '{false, false, false, false, false}'
   - id: radiator_temp
     type: int[5]
-    initial_value: '{40, 40, 40, 40, 40}'   # stored as 2x degrees, matches the AC page's convention
+    initial_value: '{40, 40, 40, 40, 40}'   # target, stored as 2x degrees, matches the AC page's convention
+  - id: radiator_cur
+    type: float[5]
+    initial_value: '{NAN, NAN, NAN, NAN, NAN}'   # room temperature (current_temperature)
+  - id: radiator_heating
+    type: bool[5]
+    initial_value: '{false, false, false, false, false}'   # hvac_action == heating
+  - id: radiator_preset
+    type: int[5]
+    initial_value: '{-1, -1, -1, -1, -1}'   # index into radiator_presets, -1 = none/other
   - id: radiator_window_open
     type: bool[5]
     initial_value: '{false, false, false, false, false}'
 
+# Five slots; radiator_count decides how many the submenu shows. A slot's
+# window sensor binary_sensor.none never reports and hides the icon.
 binary_sensor:
   - platform: homeassistant
     id: ha_radiator_window_0
-    entity_id: ${window_kitchen_entity}
+    entity_id: ${radiator_0_window}
     trigger_on_initial_state: true
     on_state:
       - lambda: |-
           id(radiator_window_open)[0] = x;
           if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_window_1
-    entity_id: ${window_bedroom_entity}
+    entity_id: ${radiator_1_window}
     trigger_on_initial_state: true
     on_state:
       - lambda: |-
           id(radiator_window_open)[1] = x;
           if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_window_2
-    entity_id: ${window_arthur_entity}
+    entity_id: ${radiator_2_window}
     trigger_on_initial_state: true
     on_state:
       - lambda: |-
           id(radiator_window_open)[2] = x;
           if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_window_3
-    entity_id: ${window_living_entity}
+    entity_id: ${radiator_3_window}
     trigger_on_initial_state: true
     on_state:
       - lambda: |-
           id(radiator_window_open)[3] = x;
           if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
-  # Bathroom has no window sensor; radiator_window_open[4] stays false and the indicator never shows.
+  - platform: homeassistant
+    id: ha_radiator_window_4
+    entity_id: ${radiator_4_window}
+    trigger_on_initial_state: true
+    on_state:
+      - lambda: |-
+          id(radiator_window_open)[4] = x;
+          if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
 text_sensor:
   - platform: homeassistant
     id: ha_radiator_mode_0
-    entity_id: ${radiator_kitchen_entity}
+    entity_id: ${radiator_0_entity}
     on_value:
       - lambda: |-
           id(radiator_on)[0] = (x != "off");
           if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_action_0
+    entity_id: ${radiator_0_entity}
+    attribute: hvac_action
+    on_value:
+      - lambda: |-
+          id(radiator_heating)[0] = (x == "heating");
+          if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_preset_0
+    entity_id: ${radiator_0_entity}
+    attribute: preset_mode
+    on_value:
+      - lambda: |-
+          static const char* PRESETS[] = {${radiator_presets}};
+          const int PN = sizeof(PRESETS) / sizeof(PRESETS[0]);
+          int idx = -1;
+          for (int p = 0; p < PN; p++) if (x == PRESETS[p]) idx = p;
+          id(radiator_preset)[0] = idx;   // -1: none or a preset not in the list
+          if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_mode_1
-    entity_id: ${radiator_bedroom_entity}
+    entity_id: ${radiator_1_entity}
     on_value:
       - lambda: |-
           id(radiator_on)[1] = (x != "off");
           if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_action_1
+    entity_id: ${radiator_1_entity}
+    attribute: hvac_action
+    on_value:
+      - lambda: |-
+          id(radiator_heating)[1] = (x == "heating");
+          if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_preset_1
+    entity_id: ${radiator_1_entity}
+    attribute: preset_mode
+    on_value:
+      - lambda: |-
+          static const char* PRESETS[] = {${radiator_presets}};
+          const int PN = sizeof(PRESETS) / sizeof(PRESETS[0]);
+          int idx = -1;
+          for (int p = 0; p < PN; p++) if (x == PRESETS[p]) idx = p;
+          id(radiator_preset)[1] = idx;   // -1: none or a preset not in the list
+          if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_mode_2
-    entity_id: ${radiator_arthur_entity}
+    entity_id: ${radiator_2_entity}
     on_value:
       - lambda: |-
           id(radiator_on)[2] = (x != "off");
           if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_action_2
+    entity_id: ${radiator_2_entity}
+    attribute: hvac_action
+    on_value:
+      - lambda: |-
+          id(radiator_heating)[2] = (x == "heating");
+          if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_preset_2
+    entity_id: ${radiator_2_entity}
+    attribute: preset_mode
+    on_value:
+      - lambda: |-
+          static const char* PRESETS[] = {${radiator_presets}};
+          const int PN = sizeof(PRESETS) / sizeof(PRESETS[0]);
+          int idx = -1;
+          for (int p = 0; p < PN; p++) if (x == PRESETS[p]) idx = p;
+          id(radiator_preset)[2] = idx;   // -1: none or a preset not in the list
+          if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_mode_3
-    entity_id: ${radiator_living_entity}
+    entity_id: ${radiator_3_entity}
     on_value:
       - lambda: |-
           id(radiator_on)[3] = (x != "off");
           if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_action_3
+    entity_id: ${radiator_3_entity}
+    attribute: hvac_action
+    on_value:
+      - lambda: |-
+          id(radiator_heating)[3] = (x == "heating");
+          if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_preset_3
+    entity_id: ${radiator_3_entity}
+    attribute: preset_mode
+    on_value:
+      - lambda: |-
+          static const char* PRESETS[] = {${radiator_presets}};
+          const int PN = sizeof(PRESETS) / sizeof(PRESETS[0]);
+          int idx = -1;
+          for (int p = 0; p < PN; p++) if (x == PRESETS[p]) idx = p;
+          id(radiator_preset)[3] = idx;   // -1: none or a preset not in the list
+          if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_mode_4
-    entity_id: ${radiator_bathroom_entity}
+    entity_id: ${radiator_4_entity}
     on_value:
       - lambda: |-
           id(radiator_on)[4] = (x != "off");
           if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_action_4
+    entity_id: ${radiator_4_entity}
+    attribute: hvac_action
+    on_value:
+      - lambda: |-
+          id(radiator_heating)[4] = (x == "heating");
+          if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_preset_4
+    entity_id: ${radiator_4_entity}
+    attribute: preset_mode
+    on_value:
+      - lambda: |-
+          static const char* PRESETS[] = {${radiator_presets}};
+          const int PN = sizeof(PRESETS) / sizeof(PRESETS[0]);
+          int idx = -1;
+          for (int p = 0; p < PN; p++) if (x == PRESETS[p]) idx = p;
+          id(radiator_preset)[4] = idx;   // -1: none or a preset not in the list
+          if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
 sensor:
   - platform: homeassistant
     id: ha_radiator_temp_0
-    entity_id: ${radiator_kitchen_entity}
+    entity_id: ${radiator_0_entity}
     attribute: temperature
     on_value:
       - lambda: |-
           if (!isnan(x)) id(radiator_temp)[0] = (int)(x * 2.0f + 0.5f);
           if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_cur_0
+    entity_id: ${radiator_0_entity}
+    attribute: current_temperature
+    on_value:
+      - lambda: |-
+          id(radiator_cur)[0] = x;
+          if (id(radiator_room_sel) == 0 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_temp_1
-    entity_id: ${radiator_bedroom_entity}
+    entity_id: ${radiator_1_entity}
     attribute: temperature
     on_value:
       - lambda: |-
           if (!isnan(x)) id(radiator_temp)[1] = (int)(x * 2.0f + 0.5f);
           if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_cur_1
+    entity_id: ${radiator_1_entity}
+    attribute: current_temperature
+    on_value:
+      - lambda: |-
+          id(radiator_cur)[1] = x;
+          if (id(radiator_room_sel) == 1 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_temp_2
-    entity_id: ${radiator_arthur_entity}
+    entity_id: ${radiator_2_entity}
     attribute: temperature
     on_value:
       - lambda: |-
           if (!isnan(x)) id(radiator_temp)[2] = (int)(x * 2.0f + 0.5f);
           if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_cur_2
+    entity_id: ${radiator_2_entity}
+    attribute: current_temperature
+    on_value:
+      - lambda: |-
+          id(radiator_cur)[2] = x;
+          if (id(radiator_room_sel) == 2 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_temp_3
-    entity_id: ${radiator_living_entity}
+    entity_id: ${radiator_3_entity}
     attribute: temperature
     on_value:
       - lambda: |-
           if (!isnan(x)) id(radiator_temp)[3] = (int)(x * 2.0f + 0.5f);
           if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_cur_3
+    entity_id: ${radiator_3_entity}
+    attribute: current_temperature
+    on_value:
+      - lambda: |-
+          id(radiator_cur)[3] = x;
+          if (id(radiator_room_sel) == 3 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
   - platform: homeassistant
     id: ha_radiator_temp_4
-    entity_id: ${radiator_bathroom_entity}
+    entity_id: ${radiator_4_entity}
     attribute: temperature
     on_value:
       - lambda: |-
           if (!isnan(x)) id(radiator_temp)[4] = (int)(x * 2.0f + 0.5f);
           if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
+
+  - platform: homeassistant
+    id: ha_radiator_cur_4
+    entity_id: ${radiator_4_entity}
+    attribute: current_temperature
+    on_value:
+      - lambda: |-
+          id(radiator_cur)[4] = x;
+          if (id(radiator_room_sel) == 4 && id(in_radiator_room)) id(refresh_radiator_room).execute();
+          if (id(in_radiators_menu) && !id(radiators_menu_animating)) id(refresh_radiators_menu).execute();
 
 script:
   - id: open_radiators_menu
@@ -273,7 +482,7 @@ script:
                   lv_obj_set_style_opa(id(rm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 5;
+                  const int n = std::max(1, std::min(5, ${radiator_count}));
                   id(radiators_menu_sel) = ((id(radiators_menu_sel) - 1) % n + n) % n;
                   id(refresh_radiators_menu).execute();
                   id(radiators_menu_animating) = false;
@@ -367,7 +576,7 @@ script:
                   lv_obj_set_style_opa(id(rm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(radiators_menu_sel) = (id(radiators_menu_sel) + 1) % 5;
+                  id(radiators_menu_sel) = (id(radiators_menu_sel) + 1) % std::max(1, std::min(5, ${radiator_count}));
                   id(refresh_radiators_menu).execute();
                   id(radiators_menu_animating) = false;
                 });
@@ -383,7 +592,7 @@ script:
   - id: refresh_radiators_menu
     then:
       - lambda: |-
-          const int ITEM_N = 5;
+          const int ITEM_N = std::max(1, std::min(5, ${radiator_count}));
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -395,7 +604,7 @@ script:
           };
           const int OFFSETS[5] = {-2, -1, 0, 1, 2};
 
-          const char* TITLES[5] = {"Kitchen", "Bedroom", "Arthur", "Living Room", "Bathroom"};
+          const char* TITLES[5] = {${radiator_name_list}};
           const uint32_t ACCENT_COLORS[5] = {0xFDC003, 0xA792E8, 0x4ADE80, 0x576BFE, 0x38BDF8};
           const uint32_t PILL_COLORS[5] = {0x2A2200, 0x231A33, 0x0A2A14, 0x0D1537, 0x0F1E2A};
 
@@ -413,6 +622,11 @@ script:
 
           for (int slot = 0; slot < SLOT_N; slot++) {
             int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+            // Fewer than five rooms: leave the places that would repeat one empty.
+            const bool shown = ITEM_N >= 5 ||
+              (OFFSETS[slot] >= -((ITEM_N - 1) / 2) && OFFSETS[slot] <= ITEM_N / 2);
+            if (shown) lv_obj_clear_flag(slots[slot], LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(slots[slot], LV_OBJ_FLAG_HIDDEN);
 
             const float off = OFFSETS[slot];
             float dy = arc_dy(off);
@@ -467,8 +681,13 @@ script:
             lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
 
             if (slot == 2) {
-              bool on = id(radiator_on)[di];
-              lv_label_set_text(id(rm_center_sub), on ? "On" : "Off");
+              // "Heating 19.5°" / "On 21.4°" / "Off 21.4°"
+              static char sub[24];
+              const char* st = id(radiator_heating)[di] ? "Heating" : (id(radiator_on)[di] ? "On" : "Off");
+              float cur = id(radiator_cur)[di];
+              if (isnan(cur)) snprintf(sub, sizeof(sub), "%s", st);
+              else snprintf(sub, sizeof(sub), "%s %.1f\xc2\xb0", st, cur);
+              lv_label_set_text(id(rm_center_sub), sub);
               lv_obj_set_style_text_color(id(rm_center_sub), lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
               lv_obj_set_style_opa(id(rm_center_sub), 255, LV_PART_MAIN);
             }
@@ -476,7 +695,10 @@ script:
 
           const int dot_offsets[5] = {-28, -14, 0, 14, 28};
           lv_obj_t* sdots[5] = {id(rm_sdot_0), id(rm_sdot_1), id(rm_sdot_2), id(rm_sdot_3), id(rm_sdot_4)};
-          for (int d = 0; d < ITEM_N; d++) {
+          for (int d = 0; d < 5; d++) {
+            if (d >= ITEM_N) { lv_obj_add_flag(sdots[d], LV_OBJ_FLAG_HIDDEN); continue; }
+            lv_obj_clear_flag(sdots[d], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_align(sdots[d], LV_ALIGN_RIGHT_MID, -10, (d * 2 - (ITEM_N - 1)) * 7);  // centred column
             if (d == sel) {
               lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
               lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
@@ -514,14 +736,11 @@ script:
           int v = id(radiator_temp)[r] + 1;
           if (v > 60) v = 60;  // 30C
           id(radiator_temp)[r] = v;
-      - homeassistant.service:
-          service: climate.set_temperature
+      - homeassistant.action:
+          action: climate.set_temperature
           data:
             entity_id: !lambda |-
-              static const char* ENTITY_IDS[5] = {
-                "${radiator_kitchen_entity}", "${radiator_bedroom_entity}", "${radiator_arthur_entity}",
-                "${radiator_living_entity}", "${radiator_bathroom_entity}"
-              };
+              static const char* ENTITY_IDS[5] = {${radiator_entity_list}};
               return std::string(ENTITY_IDS[id(radiator_room_sel)]);
             temperature: !lambda 'return std::to_string(id(radiator_temp)[id(radiator_room_sel)] / 2.0f);'
       - script.execute: refresh_radiator_room
@@ -533,14 +752,11 @@ script:
           int v = id(radiator_temp)[r] - 1;
           if (v < 10) v = 10;  // 5C
           id(radiator_temp)[r] = v;
-      - homeassistant.service:
-          service: climate.set_temperature
+      - homeassistant.action:
+          action: climate.set_temperature
           data:
             entity_id: !lambda |-
-              static const char* ENTITY_IDS[5] = {
-                "${radiator_kitchen_entity}", "${radiator_bedroom_entity}", "${radiator_arthur_entity}",
-                "${radiator_living_entity}", "${radiator_bathroom_entity}"
-              };
+              static const char* ENTITY_IDS[5] = {${radiator_entity_list}};
               return std::string(ENTITY_IDS[id(radiator_room_sel)]);
             temperature: !lambda 'return std::to_string(id(radiator_temp)[id(radiator_room_sel)] / 2.0f);'
       - script.execute: refresh_radiator_room
@@ -550,22 +766,39 @@ script:
       - lambda: |-
           int r = id(radiator_room_sel);
           id(radiator_on)[r] = !id(radiator_on)[r];
-      - homeassistant.service:
-          service: climate.set_hvac_mode
+      - homeassistant.action:
+          action: climate.set_hvac_mode
           data:
             entity_id: !lambda |-
-              static const char* ENTITY_IDS[5] = {
-                "${radiator_kitchen_entity}", "${radiator_bedroom_entity}", "${radiator_arthur_entity}",
-                "${radiator_living_entity}", "${radiator_bathroom_entity}"
-              };
+              static const char* ENTITY_IDS[5] = {${radiator_entity_list}};
               return std::string(ENTITY_IDS[id(radiator_room_sel)]);
             hvac_mode: !lambda 'return id(radiator_on)[id(radiator_room_sel)] ? std::string("heat") : std::string("off");'
+      - script.execute: refresh_radiator_room
+
+  - id: radiator_next_preset
+    then:
+      - lambda: |-
+          static const char* PRESETS[] = {${radiator_presets}};
+          const int PN = sizeof(PRESETS) / sizeof(PRESETS[0]);
+          int r = id(radiator_room_sel);
+          id(radiator_preset)[r] = (id(radiator_preset)[r] + 1) % PN;   // -1 (none) -> first
+      - homeassistant.action:
+          action: climate.set_preset_mode
+          data:
+            entity_id: !lambda |-
+              static const char* ENTITY_IDS[5] = {${radiator_entity_list}};
+              return std::string(ENTITY_IDS[id(radiator_room_sel)]);
+            preset_mode: !lambda |-
+              static const char* PRESETS[] = {${radiator_presets}};
+              return std::string(PRESETS[id(radiator_preset)[id(radiator_room_sel)]]);
       - script.execute: refresh_radiator_room
 
   - id: refresh_radiator_room
     then:
       - lambda: |-
-          static const char* NAMES[5] = {"Kitchen", "Bedroom", "Arthur", "Living Room", "Bathroom"};
+          static const char* NAMES[5] = {${radiator_name_list}};
+          static const char* WINDOWS[5] = {${radiator_window_list}};
+          static const char* PRESETS[] = {${radiator_presets}};
           int r = id(radiator_room_sel);
           int t = id(radiator_temp)[r];
           bool on = id(radiator_on)[r];
@@ -586,7 +819,26 @@ script:
           lv_obj_set_style_border_width(id(btn_radiator_power), on ? 2 : 0, LV_PART_MAIN);
           lv_obj_set_style_border_color(id(btn_radiator_power), lv_color_hex(0x00D7FF), LV_PART_MAIN);
 
-          bool has_window_sensor = (r != 4);
+          // Room temperature, preset, and an orange arc while the valve is open.
+          bool heating = id(radiator_heating)[r];
+          int pi = id(radiator_preset)[r];
+          static char pname[12];
+          if (pi >= 0) {
+            snprintf(pname, sizeof(pname), "%s", PRESETS[pi]);
+            pname[0] = toupper(pname[0]);
+          } else {
+            snprintf(pname, sizeof(pname), "No preset");
+          }
+          static char ibuf[48];
+          float cur = id(radiator_cur)[r];
+          if (isnan(cur)) snprintf(ibuf, sizeof(ibuf), "%s%s", heating ? "Heating  " : "", pname);
+          else snprintf(ibuf, sizeof(ibuf), "Room %.1f\xc2\xb0  %s%s", cur, heating ? "Heating  " : "", pname);
+          lv_label_set_text(id(lbl_radiator_info), ibuf);
+          const uint32_t arc_col = heating ? 0xFB923C : 0x00D7FF;
+          lv_obj_set_style_arc_color(id(radiator_set_arc), lv_color_hex(arc_col), LV_PART_INDICATOR);
+          lv_obj_set_style_bg_color(id(radiator_set_arc), lv_color_hex(arc_col), LV_PART_KNOB);
+
+          bool has_window_sensor = strcmp(WINDOWS[r], "binary_sensor.none") != 0;
           bool window_open = id(radiator_window_open)[r];
           if (has_window_sensor) {
             lv_obj_clear_flag(id(img_radiator_window), LV_OBJ_FLAG_HIDDEN);
@@ -913,16 +1165,25 @@ lvgl:
               - label:
                   id: lbl_radiator_temp
                   align: CENTER
-                  y: -30
+                  y: -42
                   text: "20\xc2\xb0"
                   text_font: font_air_temp
                   text_color: 0xFFFFFF
                   text_align: CENTER
 
+              - label:
+                  id: lbl_radiator_info
+                  align: CENTER
+                  y: 4
+                  text: ""
+                  text_font: font_air_label
+                  text_color: 0x5A7598
+                  text_align: CENTER
+
               - obj:
                   id: pill_radiator_room
                   align: CENTER
-                  y: 25
+                  y: 30
                   width: 130
                   height: 22
                   radius: 15
@@ -943,13 +1204,13 @@ lvgl:
                   id: img_radiator_window
                   align: CENTER
                   x: -86
-                  y: 25
+                  y: 30
                   src: img_window_closed
 
               - obj:
                   id: btn_radiator_power
                   align: CENTER
-                  y: 65
+                  y: 72
                   width: 46
                   height: 46
                   radius: 23

@@ -1,3 +1,8 @@
+substitutions:
+  # Built from the light_N_* substitutions in src/main/entities.yaml.
+  light_entity_list: '"${light_0_entity}", "${light_1_entity}", "${light_2_entity}", "${light_3_entity}", "${light_4_entity}", "${light_5_entity}"'
+  light_name_list: '"${light_0_name}", "${light_1_name}", "${light_2_name}", "${light_3_name}", "${light_4_name}", "${light_5_name}"'
+
 globals:
   - id: in_lights_menu
     type: bool
@@ -18,13 +23,15 @@ globals:
     type: bool[6]
     initial_value: '{false, false, false, false, false, false}'
   - id: ha_light_pct
-    type: int[5]
-    initial_value: '{100, 100, 100, 100, 100}'
+    type: int[6]
+    initial_value: '{100, 100, 100, 100, 100, 100}'
 
+# One state and one brightness sensor per slot; a switch simply never
+# reports a brightness.
 text_sensor:
   - platform: homeassistant
     id: ha_lt_state_0
-    entity_id: ${light_kitchen_entity}
+    entity_id: ${light_0_entity}
     on_value:
       - lambda: |-
           id(ha_light_on)[0] = (x == "on");
@@ -32,7 +39,7 @@ text_sensor:
 
   - platform: homeassistant
     id: ha_lt_state_1
-    entity_id: ${light_bedroom_strip_entity}
+    entity_id: ${light_1_entity}
     on_value:
       - lambda: |-
           id(ha_light_on)[1] = (x == "on");
@@ -40,7 +47,7 @@ text_sensor:
 
   - platform: homeassistant
     id: ha_lt_state_2
-    entity_id: ${light_bedroom_bulb_entity}
+    entity_id: ${light_2_entity}
     on_value:
       - lambda: |-
           id(ha_light_on)[2] = (x == "on");
@@ -48,7 +55,7 @@ text_sensor:
 
   - platform: homeassistant
     id: ha_lt_state_3
-    entity_id: ${light_living_entity}
+    entity_id: ${light_3_entity}
     on_value:
       - lambda: |-
           id(ha_light_on)[3] = (x == "on");
@@ -56,7 +63,7 @@ text_sensor:
 
   - platform: homeassistant
     id: ha_lt_state_4
-    entity_id: ${light_test_strip_entity}
+    entity_id: ${light_4_entity}
     on_value:
       - lambda: |-
           id(ha_light_on)[4] = (x == "on");
@@ -64,7 +71,7 @@ text_sensor:
 
   - platform: homeassistant
     id: ha_lt_state_5
-    entity_id: ${switch_test_entity}
+    entity_id: ${light_5_entity}
     on_value:
       - lambda: |-
           id(ha_light_on)[5] = (x == "on");
@@ -73,7 +80,7 @@ text_sensor:
 sensor:
   - platform: homeassistant
     id: ha_lt_bri_0
-    entity_id: ${light_kitchen_entity}
+    entity_id: ${light_0_entity}
     attribute: brightness
     on_value:
       - lambda: |-
@@ -82,7 +89,7 @@ sensor:
 
   - platform: homeassistant
     id: ha_lt_bri_1
-    entity_id: ${light_bedroom_strip_entity}
+    entity_id: ${light_1_entity}
     attribute: brightness
     on_value:
       - lambda: |-
@@ -91,7 +98,7 @@ sensor:
 
   - platform: homeassistant
     id: ha_lt_bri_2
-    entity_id: ${light_bedroom_bulb_entity}
+    entity_id: ${light_2_entity}
     attribute: brightness
     on_value:
       - lambda: |-
@@ -100,7 +107,7 @@ sensor:
 
   - platform: homeassistant
     id: ha_lt_bri_3
-    entity_id: ${light_living_entity}
+    entity_id: ${light_3_entity}
     attribute: brightness
     on_value:
       - lambda: |-
@@ -109,12 +116,21 @@ sensor:
 
   - platform: homeassistant
     id: ha_lt_bri_4
-    entity_id: ${light_test_strip_entity}
+    entity_id: ${light_4_entity}
     attribute: brightness
     on_value:
       - lambda: |-
           if (!isnan(x)) id(ha_light_pct)[4] = (int)((x / 255.0f) * 100.0f + 0.5f);
           if (id(ha_light_sel) == 4 && id(in_ha_light)) id(refresh_ha_light).execute();
+
+  - platform: homeassistant
+    id: ha_lt_bri_5
+    entity_id: ${light_5_entity}
+    attribute: brightness
+    on_value:
+      - lambda: |-
+          if (!isnan(x)) id(ha_light_pct)[5] = (int)((x / 255.0f) * 100.0f + 0.5f);
+          if (id(ha_light_sel) == 5 && id(in_ha_light)) id(refresh_ha_light).execute();
 
 script:
   - id: open_lights_menu
@@ -236,7 +252,7 @@ script:
                   lv_obj_set_style_opa(id(lm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 7;
+                  const int n = 1 + std::max(1, std::min(6, ${light_count}));
                   id(lights_menu_sel) = ((id(lights_menu_sel) - 1) % n + n) % n;
                   id(refresh_lights_menu).execute();
                   id(lights_menu_animating) = false;
@@ -342,7 +358,7 @@ script:
                   lv_obj_set_style_opa(id(lm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(lights_menu_sel) = (id(lights_menu_sel) + 1) % 7;
+                  id(lights_menu_sel) = (id(lights_menu_sel) + 1) % (1 + std::max(1, std::min(6, ${light_count})));
                   id(refresh_lights_menu).execute();
                   id(lights_menu_animating) = false;
                 });
@@ -364,7 +380,7 @@ script:
   - id: refresh_lights_menu
     then:
       - lambda: |-
-          const int ITEM_N = 7;
+          const int ITEM_N = 1 + std::max(1, std::min(6, ${light_count}));
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -376,8 +392,7 @@ script:
           };
           const int OFFSETS[5] = {-2, -1, 0, 1, 2};
 
-          const char* TITLES[7] = {"Dial Ring", "Kitchen", "Bed Underglow",
-                                    "Nightstand", "Living Room", "PC RGB", "PC Main"};
+          const char* TITLES[7] = {"Dial Ring", ${light_name_list}};
           const uint32_t ACCENT_COLORS[7] = {
             0xA792E8, 0xFDC003, 0xA98FFF, 0xFF6FA5, 0x5ABBFD, 0x4ADE80, 0xFB923C
           };
@@ -399,6 +414,11 @@ script:
 
           for (int slot = 0; slot < SLOT_N; slot++) {
             int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+            // Fewer than five items: leave the places that would repeat one empty.
+            const bool shown = ITEM_N >= 5 ||
+              (OFFSETS[slot] >= -((ITEM_N - 1) / 2) && OFFSETS[slot] <= ITEM_N / 2);
+            if (shown) lv_obj_clear_flag(slots[slot], LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(slots[slot], LV_OBJ_FLAG_HIDDEN);
 
             const float off = OFFSETS[slot];
             float dy = arc_dy(off);
@@ -465,7 +485,10 @@ script:
             id(lm_sdot_0), id(lm_sdot_1), id(lm_sdot_2), id(lm_sdot_3),
             id(lm_sdot_4), id(lm_sdot_5), id(lm_sdot_6)
           };
-          for (int d = 0; d < ITEM_N; d++) {
+          for (int d = 0; d < 7; d++) {
+            if (d >= ITEM_N) { lv_obj_add_flag(sdots[d], LV_OBJ_FLAG_HIDDEN); continue; }
+            lv_obj_clear_flag(sdots[d], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_align(sdots[d], LV_ALIGN_RIGHT_MID, -10, (d * 2 - (ITEM_N - 1)) * 7);  // centred column
             if (d == sel) {
               lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
               lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
@@ -499,36 +522,30 @@ script:
 
   - id: toggle_ha_light
     then:
-      - homeassistant.service:
-          service: homeassistant.toggle
+      - homeassistant.action:
+          action: homeassistant.toggle
           data:
             entity_id: !lambda |-
-              static const char* ENTITY_IDS[6] = {
-                "${light_kitchen_entity}", "${light_bedroom_strip_entity}",
-                "${light_bedroom_bulb_entity}", "${light_living_entity}",
-                "${light_test_strip_entity}", "${switch_test_entity}"
-              };
+              static const char* ENTITY_IDS[6] = {${light_entity_list}};
               return std::string(ENTITY_IDS[id(ha_light_sel)]);
 
   - id: ha_light_brightness_up
     then:
       - if:
           condition:
-            lambda: 'return id(ha_light_sel) < 5;'
+            lambda: |-
+              static const char* ENTITY_IDS[6] = {${light_entity_list}};
+              return strncmp(ENTITY_IDS[id(ha_light_sel)], "light.", 6) == 0;  // only lights dim
           then:
             - lambda: |-
                 int v = id(ha_light_pct)[id(ha_light_sel)] + 5;
                 if (v > 100) v = 100;
                 id(ha_light_pct)[id(ha_light_sel)] = v;
-            - homeassistant.service:
-                service: light.turn_on
+            - homeassistant.action:
+                action: light.turn_on
                 data:
                   entity_id: !lambda |-
-                    static const char* ENTITY_IDS[5] = {
-                      "${light_kitchen_entity}", "${light_bedroom_strip_entity}",
-                      "${light_bedroom_bulb_entity}", "${light_living_entity}",
-                      "${light_test_strip_entity}"
-                    };
+                    static const char* ENTITY_IDS[6] = {${light_entity_list}};
                     return std::string(ENTITY_IDS[id(ha_light_sel)]);
                   brightness_pct: !lambda 'return std::to_string(id(ha_light_pct)[id(ha_light_sel)]);'
             - script.execute: refresh_ha_light
@@ -537,21 +554,19 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(ha_light_sel) < 5;'
+            lambda: |-
+              static const char* ENTITY_IDS[6] = {${light_entity_list}};
+              return strncmp(ENTITY_IDS[id(ha_light_sel)], "light.", 6) == 0;  // only lights dim
           then:
             - lambda: |-
                 int v = id(ha_light_pct)[id(ha_light_sel)] - 5;
                 if (v < 1) v = 1;
                 id(ha_light_pct)[id(ha_light_sel)] = v;
-            - homeassistant.service:
-                service: light.turn_on
+            - homeassistant.action:
+                action: light.turn_on
                 data:
                   entity_id: !lambda |-
-                    static const char* ENTITY_IDS[5] = {
-                      "${light_kitchen_entity}", "${light_bedroom_strip_entity}",
-                      "${light_bedroom_bulb_entity}", "${light_living_entity}",
-                      "${light_test_strip_entity}"
-                    };
+                    static const char* ENTITY_IDS[6] = {${light_entity_list}};
                     return std::string(ENTITY_IDS[id(ha_light_sel)]);
                   brightness_pct: !lambda 'return std::to_string(id(ha_light_pct)[id(ha_light_sel)]);'
             - script.execute: refresh_ha_light
@@ -559,10 +574,8 @@ script:
   - id: refresh_ha_light
     then:
       - lambda: |-
-          static const char* NAMES[6] = {
-            "Kitchen", "Bed Underglow", "Nightstand",
-            "Living Room", "PC RGB", "PC Main"
-          };
+          static const char* NAMES[6] = {${light_name_list}};
+          static const char* ENTITY_IDS[6] = {${light_entity_list}};
           int sel = id(ha_light_sel);
           lv_label_set_text(id(lbl_ha_light_name), NAMES[sel]);
           bool on = id(ha_light_on)[sel];
@@ -573,7 +586,7 @@ script:
             on ? lv_color_hex(0x4ADE80) : lv_color_hex(0x262626), LV_STATE_DEFAULT);
           lv_obj_set_style_shadow_color(id(btn_ha_light_toggle),
             on ? lv_color_hex(0x4ADE80) : lv_color_hex(0x262626), LV_STATE_DEFAULT);
-          if (sel < 5) {
+          if (strncmp(ENTITY_IDS[sel], "light.", 6) == 0) {
             static char buf[6];
             snprintf(buf, sizeof(buf), "%d%%", id(ha_light_pct)[sel]);
             lv_label_set_text(id(lbl_ha_light_pct), buf);

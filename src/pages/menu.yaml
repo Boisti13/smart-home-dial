@@ -51,12 +51,6 @@ image:
     transparency: alpha_channel
     resize: 34x34
   - platform: file
-    file: ${dial_dir}/src/assets/images/fridge.png
-    id: menu_img_fridge
-    type: RGB565
-    transparency: alpha_channel
-    resize: 34x34
-  - platform: file
     file: ${dial_dir}/src/assets/images/timer.png
     id: menu_img_timer
     type: RGB565
@@ -549,8 +543,6 @@ script:
             }
           }
 
-          // Fridge menu entry disabled (see src/pages/fridge.yaml, kept as reference,
-          // and dial.yaml's commented-out fridge_page include).
           const char* TITLES[7]    = {"Timer", "Lights", "Radiators", "AC", "Music", "Settings", "Home"};
           const char* SUBTITLES[7] = {"", "",
                                       "",  ac_menu_sub,
@@ -805,14 +797,14 @@ lvgl:
                               id: slot_near_up_img
                               align: LEFT_MID
                               x: 2
-                              src: menu_img_fridge
+                              src: menu_img_timer
                           - label:
                               id: slot_near_up_lbl
                               align: LEFT_MID
                               x: 38
                               text_font: font_menu_item
                               text_color: col_menu_dim
-                              text: "Fridge"
+                              text: ""
                               text_opa: 50%
 
                     - obj:

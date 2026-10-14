@@ -52,20 +52,6 @@ image:
     transparency: alpha_channel
     resize: 25x25
 
-  - platform: file
-    file: ${dial_dir}/src/assets/images/air_page/swing_off.png
-    id: img_air_swing_off
-    type: RGB565
-    transparency: alpha_channel
-    resize: 25x25
-
-  - platform: file
-    file: ${dial_dir}/src/assets/images/air_page/swing_on.png
-    id: img_air_swing_on
-    type: RGB565
-    transparency: alpha_channel
-    resize: 25x25
-
 color:
   - id: col_air_bg
     hex: "000000"
@@ -102,9 +88,6 @@ globals:
   - id: air_btn_power_active
     type: bool
     initial_value: 'true'
-  - id: air_btn_swing_active
-    type: bool
-    initial_value: 'false'
   - id: air_encoder_step_accum
     type: int
     initial_value: '0'
@@ -176,8 +159,8 @@ script:
           int v = id(air_temp) + 2;
           if (v > 52) v = 52;  // 26C
           id(air_temp) = v;
-      - homeassistant.service:
-          service: climate.set_temperature
+      - homeassistant.action:
+          action: climate.set_temperature
           data:
             entity_id: ${climate_entity}
             temperature: !lambda 'return std::to_string((int)(id(air_temp) / 2));'
@@ -189,8 +172,8 @@ script:
           int v = id(air_temp) - 2;
           if (v < 34) v = 34;  // 17C
           id(air_temp) = v;
-      - homeassistant.service:
-          service: climate.set_temperature
+      - homeassistant.action:
+          action: climate.set_temperature
           data:
             entity_id: ${climate_entity}
             temperature: !lambda 'return std::to_string((int)(id(air_temp) / 2));'
@@ -209,8 +192,8 @@ script:
           int v = id(air_fan_speed) + 1;
           if (v > 4) v = 4;
           id(air_fan_speed) = v;
-      - homeassistant.service:
-          service: climate.set_fan_mode
+      - homeassistant.action:
+          action: climate.set_fan_mode
           data:
             entity_id: ${climate_entity}
             fan_mode: !lambda |-
@@ -228,8 +211,8 @@ script:
           int v = id(air_fan_speed) - 1;
           if (v < 1) v = 1;
           id(air_fan_speed) = v;
-      - homeassistant.service:
-          service: climate.set_fan_mode
+      - homeassistant.action:
+          action: climate.set_fan_mode
           data:
             entity_id: ${climate_entity}
             fan_mode: !lambda |-
@@ -266,16 +249,12 @@ script:
 
           lv_img_set_src(id(img_air_fan_btn), id(air_mode) == 1 ? id(img_air_fan_on) : id(img_air_fan_off));
           lv_img_set_src(id(img_air_power_btn), id(air_btn_power_active) ? id(img_air_power_on) : id(img_air_power_off));
-          lv_img_set_src(id(img_air_swing_btn), id(air_btn_swing_active) ? id(img_air_swing_on) : id(img_air_swing_off));
 
           lv_obj_set_style_border_width(id(btn_air_fan), id(air_mode) == 1 ? 2 : 0, LV_PART_MAIN);
           lv_obj_set_style_border_color(id(btn_air_fan), lv_color_hex(0x00D7FF), LV_PART_MAIN);
 
           lv_obj_set_style_border_width(id(btn_air_power), id(air_btn_power_active) ? 2 : 0, LV_PART_MAIN);
           lv_obj_set_style_border_color(id(btn_air_power), lv_color_hex(0x00D7FF), LV_PART_MAIN);
-
-          lv_obj_set_style_border_width(id(btn_air_swing), id(air_btn_swing_active) ? 2 : 0, LV_PART_MAIN);
-          lv_obj_set_style_border_color(id(btn_air_swing), lv_color_hex(0x00D7FF), LV_PART_MAIN);
 
           int fs = id(air_fan_speed);
           lv_obj_set_style_arc_opa(id(fan_seg_1), fs >= 1 ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
@@ -479,7 +458,7 @@ lvgl:
               - obj:
                   id: btn_air_fan
                   align: BOTTOM_MID
-                  x: -46
+                  x: -23
                   y: -50
                   width: 37
                   height: 37
@@ -500,7 +479,7 @@ lvgl:
               - obj:
                   id: btn_air_power
                   align: BOTTOM_MID
-                  x: 0
+                  x: 23
                   y: -50
                   width: 37
                   height: 37
@@ -514,8 +493,8 @@ lvgl:
                   on_click:
                     - lambda: |-
                         id(air_btn_power_active) = !id(air_btn_power_active);
-                    - homeassistant.service:
-                        service: climate.set_hvac_mode
+                    - homeassistant.action:
+                        action: climate.set_hvac_mode
                         data:
                           entity_id: ${climate_entity}
                           hvac_mode: !lambda 'return id(air_btn_power_active) ? std::string("cool") : std::string("off");'
@@ -525,26 +504,3 @@ lvgl:
                         id: img_air_power_btn
                         align: CENTER
                         src: img_air_power_off
-
-              - obj:
-                  id: btn_air_swing
-                  align: BOTTOM_MID
-                  x: 46
-                  y: -50
-                  width: 37
-                  height: 37
-                  radius: 19
-                  bg_color: col_air_btn_bg
-                  bg_opa: COVER
-                  border_width: 0
-                  clickable: true
-                  scrollbar_mode: "OFF"
-                  on_click:
-                    - lambda: |-
-                        id(air_btn_swing_active) = !id(air_btn_swing_active);
-                    - script.execute: refresh_air
-                  widgets:
-                    - image:
-                        id: img_air_swing_btn
-                        align: CENTER
-                        src: img_air_swing_off

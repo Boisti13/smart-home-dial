@@ -7,21 +7,50 @@ substitutions:
   aqi_entity: sensor.kaiserslautern_rathausplatz_germany_air_quality_index
   climate_entity: climate.pinguino
   music_player_entity: media_player.speaker_1_sendspin_media_player
-  light_kitchen_entity: light.kitchen_main_led
-  light_bedroom_strip_entity: light.bedroom_rgb_strip
-  light_bedroom_bulb_entity: light.bedroom_rgb_bulb
-  light_living_entity: light.living_led
-  light_test_strip_entity: light.test_ws2815_strip
-  switch_test_entity: switch.test_main_led
-  radiator_kitchen_entity: climate.kitchen_radiator
-  radiator_bedroom_entity: climate.bedroom_radiator
-  radiator_arthur_entity: climate.arthur_radiator
-  radiator_living_entity: climate.living_room_radiator
-  radiator_bathroom_entity: climate.bathroom_radiator
-  window_kitchen_entity: binary_sensor.kitchen_window_contact
-  window_bedroom_entity: binary_sensor.bedroom_window_contact
-  window_arthur_entity: binary_sensor.arthur_window_contact
-  window_living_entity: binary_sensor.balcony_door_contact
+
+  # Lights submenu: the Dial Ring, then up to 6 Home Assistant lights or
+  # switches. light_count says how many slots are used (1-6); slots above it
+  # are ignored, but their entity must still be a valid ID (repeat any).
+  # light.* entities get a brightness control, anything else on/off only.
+  # Names are shown on the Dial: plain letters, digits and spaces only.
+  light_count: "6"
+  light_0_name: "Kitchen"
+  light_0_entity: light.kitchen_main_led
+  light_1_name: "Bed Underglow"
+  light_1_entity: light.bedroom_rgb_strip
+  light_2_name: "Nightstand"
+  light_2_entity: light.bedroom_rgb_bulb
+  light_3_name: "Living Room"
+  light_3_entity: light.living_led
+  light_4_name: "PC RGB"
+  light_4_entity: light.test_ws2815_strip
+  light_5_name: "PC Main"
+  light_5_entity: switch.test_main_led
+
+  # Radiators submenu: up to 5 rooms, radiator_count of them used (1-5).
+  # *_entity is the room's climate entity (Versatile Thermostat or any
+  # climate with hvac_mode heat/off), *_window an optional door/window
+  # contact; binary_sensor.none = no sensor, no window icon.
+  radiator_count: "5"
+  radiator_0_name: "Kitchen"
+  radiator_0_entity: climate.kitchen_radiator
+  radiator_0_window: binary_sensor.kitchen_window_contact
+  radiator_1_name: "Bedroom"
+  radiator_1_entity: climate.bedroom_radiator
+  radiator_1_window: binary_sensor.bedroom_window_contact
+  radiator_2_name: "Arthur"
+  radiator_2_entity: climate.arthur_radiator
+  radiator_2_window: binary_sensor.arthur_window_contact
+  radiator_3_name: "Living Room"
+  radiator_3_entity: climate.living_room_radiator
+  radiator_3_window: binary_sensor.balcony_door_contact
+  radiator_4_name: "Bathroom"
+  radiator_4_entity: climate.bathroom_radiator
+  radiator_4_window: binary_sensor.none
+  # Presets the front button cycles through on a room page (Versatile
+  # Thermostat names; must exist in the climate's preset_modes).
+  radiator_presets: '"comfort", "eco", "frost", "boost"'
+
   motion_alarm_entity: binary_sensor.cam_pt2_motion_alarm
   motion_alarm_message: "Check Bedroom"   # shown on the red Motion Alert screen
   season_mode_entity: input_select.season_mode   # Summer / Winter: shows AC or Radiators in the main menu

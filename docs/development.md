@@ -13,6 +13,7 @@ for working on it is in [CLAUDE.md](../CLAUDE.md).
 | `src/main/hardware.yaml` | Dial hardware: I2C, display, touch, RTC, encoder, button, LED ring, buzzer/RTTTL, power hold, NFC |
 | `src/main/entities.yaml` | Home Assistant entity IDs (substitutions) |
 | `src/main/globals.yaml` | User-tunable defaults |
+| `src/main/diagnostics.yaml` | Wi-Fi signal, uptime, restart and safe-mode buttons |
 | `src/pages/*.yaml` | One LVGL page per feature, each an ESPHome package |
 | `src/assets/fonts/`, `src/assets/images/` | Local fonts and small icons |
 | `hardware/3d-models/` | STL files for the case |
@@ -30,7 +31,6 @@ for working on it is in [CLAUDE.md](../CLAUDE.md).
 | `music.yaml` | Music (SendSpin) |
 | `timer.yaml` | Timer and alarm |
 | `settings.yaml` | Settings submenu, Motion Alert, sleep/wake, timeouts |
-| `fridge.yaml` | Fridge (disabled) |
 
 ## Naming
 

@@ -178,8 +178,6 @@ script:
       - globals.set: {id: in_air, value: 'false'}
       - globals.set: {id: in_music, value: 'false'}
       - globals.set: {id: in_timer, value: 'false'}
-      # Fridge menu disabled; page kept in src/pages/fridge.yaml for reference.
-      # - globals.set: {id: in_fridge, value: 'false'}
       - globals.set: {id: in_lights_menu, value: 'false'}
       - globals.set: {id: in_ha_light, value: 'false'}
       - globals.set: {id: in_radiators_menu, value: 'false'}

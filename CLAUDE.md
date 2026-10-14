@@ -97,4 +97,9 @@ ssh devbox 'cd ~/dev/smart-home-dial && git pull &&
 - `homeassistant` binary sensors whose current state matters at boot get
   `trigger_on_initial_state: true`, except alarms (Motion Alert must not
   fire on boot).
-- Disabled features are commented out, not deleted (Fridge).
+- Lights and radiators are **slots** configured in `src/main/entities.yaml`
+  (`*_count`, `*_N_name`, `*_N_entity`); page code reads them through the
+  `*_list` substitutions at the top of `ha_lights.yaml` / `radiators.yaml`.
+  Never write a room or light name into a page file.
+- Unused features are deleted, not commented out (git history keeps them;
+  the Fridge page went in v2.0.0).

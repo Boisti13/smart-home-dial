@@ -18,7 +18,8 @@ change it. Entity IDs are set in `src/main/entities.yaml`; see
 - [Tunable defaults](#tunable-defaults)
 - [Battery](#battery)
 - [NFC](#nfc)
-- [Fridge (disabled)](#fridge-disabled)
+- [Home Assistant offline](#home-assistant-offline)
+- [Diagnostics](#diagnostics)
 
 ## Clock
 
@@ -37,8 +38,8 @@ attribute. The time zone is set twice in this file (`time:` → `rtctime` and
 
 `src/pages/air.yaml`. Target temperature, power and fan speed call
 `climate.set_temperature`, `climate.set_hvac_mode` and
-`climate.set_fan_mode`. Swing is a local UI toggle only and is not sent to
-Home Assistant.
+`climate.set_fan_mode`. (The upstream swing button is gone since v2.0.0:
+it only ever changed the screen, and the Pinguino has no swing.)
 
 The power button toggles between `hvac_mode: cool` and `off`; the fan
 control cycles `fan_mode` through `auto` / `low` / `medium` / `high`. These
@@ -52,42 +53,48 @@ from Home Assistant, so it stays right when the AC is changed elsewhere.
 
 ## Radiators
 
-`src/pages/radiators.yaml`. Five rooms (Kitchen, Bedroom, Arthur, Living
-Room, Bathroom), each with a page for target temperature
-(`climate.set_temperature`) and power (`climate.set_hvac_mode`, `heat` ↔
-`off`; edit the `radiator_toggle_power` script for other strings).
+`src/pages/radiators.yaml`. Up to five rooms (`radiator_count`; names and
+entities in `src/main/entities.yaml`), each with a page for:
+
+| On the room page | How |
+|---|---|
+| Target temperature | turn the knob (`climate.set_temperature`, 0.5° steps) |
+| On/off | the power button (`climate.set_hvac_mode`, `heat` ↔ `off`; edit `radiator_toggle_power` for other strings) |
+| Room temperature | the line under the target, from `current_temperature` |
+| Heating now | the arc and knob turn **orange** and the line says *Heating* while `hvac_action` is `heating` (valve open) |
+| Preset | shown on the same line; a **short press of the front button** steps through `radiator_presets` (default Comfort → Eco → Frost → Boost) with `climate.set_preset_mode` |
+
+The submenu's centre tile shows the same at a glance: *Heating 19.5°*,
+*On 21.4°* or *Off 21.4°*, and updates live.
 
 Each room can show a **window icon** next to its name, driven by a
 `binary_sensor` contact: frame with cross panes = closed, frame without =
-open. A room without a `window_*_entity` substitution (Bathroom by default)
-never shows it. The window sensors use `trigger_on_initial_state: true`, so
+open. A room whose `radiator_N_window` is `binary_sensor.none` (Bathroom by
+default) never shows it. The window sensors use `trigger_on_initial_state: true`, so
 the icon is right straight after a reboot. ESPHome otherwise fires
 `on_state` only on *changes*, not on the value Home Assistant sends on
 connect. Keep that if you copy the pattern.
 
-To change rooms or their number, update consistently:
-
-- the `radiator_*_entity` / `window_*_entity` substitutions in `src/main/entities.yaml`
-- the `binary_sensor` / `text_sensor` / `sensor` blocks and the `ENTITY_IDS` / `NAMES` arrays in `src/pages/radiators.yaml`
-- the `TITLES` / `ACCENT_COLORS` / `PILL_COLORS` arrays in `src/pages/radiators.yaml` and `src/pages/menu.yaml`
-- the item count in the submenu's carousel code
+To change rooms or their number, edit only `src/main/entities.yaml`:
+`radiator_count` (1–5) and `radiator_N_name` / `_entity` / `_window` per
+slot. Slots above the count are ignored but still need a valid entity ID.
+With fewer than five rooms the carousel leaves the places that would repeat
+a room empty. More than five rooms needs another slot in
+`src/pages/radiators.yaml` (sensors, the `*_list` substitutions, the arrays
+sized `[5]`) and another dot widget.
 
 ## Lights
 
 `src/pages/ha_lights.yaml`. The submenu lists the Dial's own LED ring
 ("Dial Ring", with the full color/effects page in `src/pages/light.yaml`)
-plus five `light.*` entities and one `switch.*`. Home Assistant lights get
-on/off and brightness only, no color, since not every bulb has RGB; the
-switch gets on/off only. Each tile shows the live on/off state from Home
-Assistant.
+plus up to six Home Assistant entities (`light_count`; names and entities
+in `src/main/entities.yaml`). A `light.*` gets on/off and brightness (no
+color, since not every bulb has RGB); anything else, e.g. a `switch.*`, gets
+on/off only. Each tile shows the live on/off state from Home Assistant.
 
-Fewer real lights? Point the spare substitutions at any entity you don't mind
-seeing greyed out. To change entities, names or count, update consistently:
-
-- the `light_*_entity` / `switch_*_entity` substitutions in `src/main/entities.yaml`
-- the `ENTITY_IDS` arrays and per-entity `sensor` / `text_sensor` blocks in `src/pages/ha_lights.yaml`
-- the `NAMES` / `TITLES` arrays in `src/pages/ha_lights.yaml` and `src/pages/menu.yaml`
-- the item count (`ITEM_N`) in the submenu's carousel code
+To change lights or their number, edit only `src/main/entities.yaml`:
+`light_count` (1–6) and `light_N_name` / `light_N_entity` per slot. Slots
+above the count are ignored but still need a valid entity ID.
 
 ## Music
 
@@ -266,8 +273,25 @@ to Home Assistant as a tag scan (`homeassistant.tag_scanned`). New tags show
 up under *Settings → Tags* and can trigger automations ("Tag is scanned").
 Needs *Allow the device to perform Home Assistant actions*.
 
-## Fridge (disabled)
+## Home Assistant offline
 
-`src/pages/fridge.yaml` (small food freshness cards) is kept but commented
-out in `dial.yaml` and `src/pages/menu.yaml`. Un-comment both to bring it
-back.
+When Home Assistant's connection drops (HA restarting or updating, Wi-Fi
+gone), a red **HA offline** pill appears at the top of every page: the
+values on screen are the last ones received and buttons can't reach Home
+Assistant. It disappears when Home Assistant connects again and re-sends
+every value (`dial.yaml`: `api` → `on_client_disconnected`, the
+`on_ha_connected` script in `src/pages/load.yaml`).
+
+## Diagnostics
+
+`src/main/diagnostics.yaml` adds entities for the device page in Home
+Assistant: **Wi-Fi Signal** (dBm, every 60 s) and **Uptime** under
+*Diagnostic*, and the buttons **Restart** and **Safe Mode Boot** under
+*Configuration*. Safe mode starts only Wi-Fi and OTA, for when a new build
+crashes before it can be updated normally.
+
+## Fridge (removed)
+
+Upstream's Fridge page (food freshness cards) was switched off since v1.3.0
+and removed in v2.0.0. It is in the git history (`src/pages/fridge.yaml`
+before v2.0.0) if you want it back.

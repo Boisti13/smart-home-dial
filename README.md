@@ -4,7 +4,7 @@
 
 # Smart Home Dial
 
-[![Version](https://img.shields.io/badge/version-1.8.0-orange)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.0-orange)](CHANGELOG.md)
 [![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.9.1-blue?logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/platform-ESP32--S3-red?logo=espressif)](#hardware)
 [![Display](https://img.shields.io/badge/display-GC9A01A%20240x240-purple)](#hardware)
@@ -28,8 +28,8 @@ reworked dial feel added on top.
 ## Highlights
 
 - **Clock and weather** at a glance: time, date, outdoor temperature, humidity and pressure from your own sensors, air quality and wind
-- **Lights**: the Dial's own LED ring (brightness, colors, effects) plus five Home Assistant lights and a switch, each with on/off and brightness
-- **Radiators**: five rooms with target temperature and on/off, and a **window open/closed icon** per room from a contact sensor
+- **Lights**: the Dial's own LED ring (brightness, colors, effects) plus up to six Home Assistant lights or switches, with on/off and (for lights) brightness
+- **Radiators**: up to five rooms with target temperature, on/off, the **room temperature**, an orange arc while the radiator is **heating**, **presets** (Comfort, Eco, Frost, Boost) on the front button, and a **window open/closed icon** from a contact sensor
 - **Air conditioner**: target temperature, power and fan speed (auto/low/medium/high)
 - **Music**: cover art, progress, volume and play/pause/skip through SendSpin
 - **Timer** with an alarm tune on the buzzer: stop it with a touch or a turn, and it stops by itself after 60 s
@@ -40,12 +40,15 @@ reworked dial feel added on top.
 - **Feels the same everywhere**: one click is one step on every page and menu, and backing out of a submenu returns you to where you were
 - **Three ways to navigate**: turn the knob, touch, or press the front button. From the home screen a swipe or a turn opens the menu
 - **Battery-friendly**: the screen sleeps by itself, and the first touch only wakes it
+- **Knows when Home Assistant is gone**: a red *HA offline* pill on every page instead of quietly showing old values
+- **Diagnostics in Home Assistant**: Wi-Fi signal, uptime, restart and safe-mode buttons
+- **Your own lights and rooms**: names, entities and how many, all in `src/main/entities.yaml`
 - **3D-printable case** for desk or fridge door ([hardware/3d-models](hardware/3d-models))
 
 | | | | |
 |---|---|---|---|
 | ![Clock and weather](docs/images/gallery/clock-weather-page.jpg) | ![Music](docs/images/gallery/music-page.jpg) | ![Air conditioner](docs/images/gallery/ac-page.jpg) | ![Timer](docs/images/gallery/timer-page.jpg) |
-| ![AC power](docs/images/gallery/ac-power-page.jpg) | ![LED ring](docs/images/gallery/light-page.jpg) | ![Fridge (disabled)](docs/images/gallery/fridge-page.jpg) | ![Menu](docs/images/gallery/menu-page.jpg) |
+| ![AC power](docs/images/gallery/ac-power-page.jpg) | ![LED ring](docs/images/gallery/light-page.jpg) | ![Menu](docs/images/gallery/menu-page.jpg) | |
 
 Demo video: [Smart Home Button on YouTube](https://www.youtube.com/watch?v=51bXRBuSLpM) (the upstream project).
 
@@ -55,15 +58,14 @@ Demo video: [Smart Home Button on YouTube](https://www.youtube.com/watch?v=51bXR
 |---|---|
 | **Clock** | Time, date, weather, humidity, AQI, pressure, wind; home screen |
 | **Menu** | Round carousel of the pages below; each of Timer, Lights, Radiators, AC and Music can be hidden |
-| **Lights** | LED ring ("Dial Ring") with colors and effects, plus 5 HA lights and 1 switch with on/off and brightness |
-| **Radiators** | Kitchen, Bedroom, Arthur, Living Room, Bathroom: target temperature, on/off, window icon |
-| **AC** | Target temperature, power, fan speed; swing is a local toggle only |
+| **Lights** | LED ring ("Dial Ring") with colors and effects, plus up to 6 HA lights/switches with on/off and brightness |
+| **Radiators** | Up to 5 rooms: target and room temperature, on/off, heating state, presets, window icon |
+| **AC** | Target temperature, power, fan speed |
 | **Music** | SendSpin player: cover art, progress, volume, transport buttons |
 | **Timer** | Countdown set with the knob, alarm at zero |
 | **Settings** | Display Timeout, Menu Timeout, Buzzer, Motion Alert, Dial Sensitivity, Menu Items |
 
-The Fridge page still exists in `src/pages/fridge.yaml` but is switched off
-in `dial.yaml`. How each page works and how to change it:
+How each page works and how to change it:
 **[docs/pages.md](docs/pages.md)**.
 
 ## Hardware
@@ -118,10 +120,10 @@ All in `src/main/entities.yaml`; find the IDs under *Developer Tools → States*
 | `aqi_entity` | `sensor.*` air quality index (its state), e.g. from [WAQI](https://www.home-assistant.io/integrations/waqi/) | Clock |
 | `climate_entity` | `climate.*` air conditioner | AC page, menu tile |
 | `music_player_entity` | `media_player.*` that actually plays audio | Music |
-| `light_kitchen_entity`, `light_bedroom_strip_entity`, `light_bedroom_bulb_entity`, `light_living_entity`, `light_test_strip_entity` | `light.*` × 5 | Lights |
-| `switch_test_entity` | `switch.*` | Lights (on/off only) |
-| `radiator_kitchen_entity` … `radiator_bathroom_entity` | `climate.*` × 5 | Radiators |
-| `window_kitchen_entity`, `window_bedroom_entity`, `window_arthur_entity`, `window_living_entity` | `binary_sensor.*` door/window contact | Radiators (Bathroom has none) |
+| `light_count`, `light_0_name` … `light_5_name`, `light_0_entity` … `light_5_entity` | up to 6 × `light.*` (dimmable) or `switch.*` | Lights |
+| `radiator_count`, `radiator_0_name` … `radiator_4_name`, `radiator_0_entity` … `radiator_4_entity` | up to 5 × `climate.*` | Radiators |
+| `radiator_0_window` … `radiator_4_window` | `binary_sensor.*` door/window contact, or `binary_sensor.none` | Radiators |
+| `radiator_presets` | preset names, e.g. `'"comfort", "eco", "frost", "boost"'` | Radiators (front button) |
 | `motion_alarm_entity` | `binary_sensor.*` motion | Motion Alert |
 | `motion_alarm_message` | text, e.g. `"Check Bedroom"` | Motion Alert screen |
 | `season_mode_entity` | `input_select.*` with the options `Summer` and `Winter` | Main menu: AC in summer, Radiators in winter |
@@ -180,7 +182,7 @@ smart-home-dial/
 │   │   ├── hardware.yaml   pins, display, touch, RTC, encoder, LED ring, buzzer, power hold
 │   │   ├── entities.yaml   Home Assistant entity IDs
 │   │   └── globals.yaml    defaults you may want to tune (timeouts, buzzer, Motion Alert, dial sensitivity, scroll speed)
-│   ├── pages/              one LVGL page per feature (main = clock, menu, light, ha_lights, radiators, air, music, timer, settings, load, fridge)
+│   ├── pages/              one LVGL page per feature (main = clock, menu, light, ha_lights, radiators, air, music, timer, settings, load)
 │   └── assets/             fonts and small icons (no PSRAM: keep them small)
 ├── hardware/3d-models/     STL files for the case
 └── docs/                   the guides above and gallery images

@@ -9,7 +9,10 @@
 | **Wrong wind speed** | Change `weather_entity` in `src/main/entities.yaml`. |
 | **AQI stuck on `--`** | `aqi_entity` must be an air-quality sensor whose *state* is the index, not an attribute of the weather entity. |
 | **Wrong AC** | Change `climate_entity` in `src/main/entities.yaml`. |
-| **Wrong or missing light** | Change the matching `light_*_entity` / `switch_*_entity` ([Lights](pages.md#lights)). |
+| **Wrong or missing light or room** | Check `light_count` / `radiator_count` and the slot's `*_name` / `*_entity` in `src/main/entities.yaml` ([Lights](pages.md#lights), [Radiators](pages.md#radiators)). |
+| **Config fails after updating to v2.0.0** | The light, switch, radiator and window substitutions were replaced by numbered slots; rewrite that part of `src/main/entities.yaml` from the repository's copy ([configuration](configuration.md#home-assistant-entities)). |
+| **Front button does nothing on a room page** | It sets the next preset from `radiator_presets`; the climate must offer those names in `preset_modes`, and the device needs *Allow the device to perform Home Assistant actions*. |
+| **Red *HA offline* pill** | Home Assistant is unreachable: restarting, or the Dial lost Wi-Fi. It goes away by itself once HA is back ([details](pages.md#home-assistant-offline)). |
 | **Window icon stuck on closed after a reflash** | The room's `binary_sensor` needs `trigger_on_initial_state: true` ([Radiators](pages.md#radiators)). |
 | **One click moves more than one step** | Raise *Settings → Dial Sensitivity*. This encoder gives about 4 raw ticks per click ([Dial sensitivity](pages.md#dial-sensitivity)). |
 | **Motion Alert too often / not often enough** | Change Cooldown and Duration on the Motion Alert page ([Motion Alert](pages.md#motion-alert)). |

@@ -1,0 +1,24 @@
+# Diagnostic entities for Home Assistant (device page → Diagnostic):
+# Wi-Fi signal and uptime to spot a weak spot or crash loops, and buttons to
+# restart the Dial or boot it into safe mode (OTA only, for a broken build)
+# without unplugging it.
+
+sensor:
+  - platform: wifi_signal
+    name: "Wi-Fi Signal"
+    update_interval: 60s
+    entity_category: diagnostic
+
+  - platform: uptime
+    name: "Uptime"
+    type: timestamp
+    entity_category: diagnostic
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode Boot"
+    entity_category: config
