@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for improving Smart Home Button.
+Thanks for improving Smart Home Dial.
 
 ## Before opening a pull request
 
@@ -8,7 +8,8 @@ Thanks for improving Smart Home Button.
 - Run `esphome config dial.yaml` before submitting changes.
 - Keep page files focused: one feature page per YAML file in `src/pages/`.
 - Avoid committing generated build output, virtual environments, caches, or local IDE settings.
-- Document any new Home Assistant entity dependency in `docs/configuration.md`.
+- Document any new Home Assistant entity dependency in `docs/configuration.md` and the README entity table.
+- Add a `CHANGELOG.md` entry; see `docs/development.md` for versions.
 
 ## Code style
 

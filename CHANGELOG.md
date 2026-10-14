@@ -1,94 +1,93 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+All notable changes, newest first. Versions follow semantic versioning
+([docs/development.md](docs/development.md#versions)); releases are merged to
+`main` and tagged `vX.Y.Z`.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/).
+## Unreleased
 
-## [1.4.0] - 2026-07-16
+### Under the hood
+- **`CLAUDE.md`** with the working rules for this repository: `dev` only, validate before committing, what to update with a change, the release routine.
+- README rewritten: shorter, with *Highlights*, tables for pages, hardware, install steps and Home Assistant entities, and a worked example (a motion alarm for the bedroom). The per-page notes moved to **[docs/pages.md](docs/pages.md)**, the common issues to **[docs/troubleshooting.md](docs/troubleshooting.md)**.
+- `docs/configuration.md` lists every entity, the *Allow the device to perform Home Assistant actions* switch, and the time zone (still `Asia/Shanghai` from upstream, set twice in `src/pages/main.yaml`).
+- `docs/development.md` replaces `docs/project-structure.md` and `docs/release-checklist.md`: layout, naming, checking a change, versions, releases, upstream.
+- Documented that the config only validates with the pinned ESPHome 2026.3.3: on 2026.9.1 the local `components/const` and `components/image` overrides break the `esp32` platform ("Platform missing").
+- This changelog now uses the same layout as the owner's other projects (*Added / Changed / Fixed / Under the hood*, newest first).
+
+## v1.4.0 — 2026-07-16
 
 ### Added
-
-- **Motion Alert**: sounds the buzzer and flashes the display red with a "Check Bedroom" message when a Home Assistant motion `binary_sensor` triggers. A single Settings entry with three focusable rows (Enabled, Duration, Cooldown) — tap the front button or touch a row to focus it, then turn the encoder to adjust.
-- `motion_alarm_entity` substitution, and `motion_alert_enabled`/`motion_alarm_duration_s`/`motion_alarm_cooldown_s` globals (all persisted across reboots).
-- **Dial Sensitivity** entry in Settings: a shared `encoder_step_threshold` global (default 4, persisted, range 1–10) controlling how many raw encoder ticks make up one debounced step.
-- Debounced every value-adjusting interaction in the app against that same shared threshold: AC temperature/fan, Motion Alert's focused row, Display Timeout, Menu Timeout, Dial Sensitivity itself, and scrolling the Main/Lights/Radiators/Settings carousels (previously only AC was debounced, and inconsistently).
-- New `motion_alert.png` bell icon.
+- **Motion Alert**: the buzzer sounds and the screen flashes red with *Check Bedroom* when a Home Assistant motion sensor triggers. One Settings entry with three rows (Enabled, Duration, Cooldown). Tap the front button or touch a row to focus it, then turn the knob. All three are saved across reboots.
+- **Dial Sensitivity** in Settings: how many raw encoder ticks make one step (default 4, range 1–10, saved).
+- Every page and menu that adjusts a value now uses that one setting: AC temperature/fan, Motion Alert, Display Timeout, Menu Timeout, Dial Sensitivity, and scrolling the Main/Lights/Radiators/Settings carousels. Before, only AC was debounced, and inconsistently.
+- `motion_alarm_entity` substitution; new bell icon `motion_alert.png`.
 
 ### Changed
-
-- Backing out of a submenu (Settings, Lights, Radiators, or a Radiator room) now returns to the exact item you came from instead of resetting to the top of the list. Only a fresh entry from a parent menu resets the selection now (`enter_menu`/`enter_settings_menu`/`enter_lights_menu`/`enter_radiators_menu` vs. the now-non-resetting `open_*` scripts).
+- Backing out of a submenu (Settings, Lights, Radiators or a radiator room) returns to the item you came from instead of the top of the list. Only opening fresh from the parent resets it.
 
 ### Fixed
+- One click of the knob moved more than one step on undebounced pages. This encoder produces about 4 raw ticks per click (found by logging raw ticks one detent at a time); Dial Sensitivity above fixes it everywhere at once.
+- Motion Alert's red flash no longer tears: it fades in and out over 150 ms instead of snapping, which the small LVGL render buffer handles cleanly.
+- Motion Alert's Settings subtitle showed a missing-glyph square (a middle dot that wasn't in the font).
 
-- Diagnosed (via temporary raw-tick logging while turning the encoder one detent at a time) that this hardware's rotary encoder produces roughly 4 raw ticks per physical click, explaining why undebounced pages moved by more than one step per click. The shared debounce threshold above addresses this everywhere at once instead of per-page.
-- Motion Alert's full-screen red flash no longer visibly tears — replaced an abrupt hidden/visible toggle with a 150ms fade in/out, which this display's small LVGL render buffer handles far more cleanly.
-- Motion Alert's Settings subtitle no longer shows a missing-glyph square (a middle-dot separator character wasn't in the subtitle font).
+### Under the hood
+- `motion_alert_enabled`, `motion_alarm_duration_s`, `motion_alarm_cooldown_s` and `encoder_step_threshold` globals; `enter_*` (reset and open) vs. `open_*` (open only) scripts for every carousel.
 
-## [1.3.0] - 2026-07-14
+## v1.3.0 — 2026-07-14
 
 ### Added
-
-- **Radiators** main menu item and submenu: five per-room climate control pages (Kitchen, Bedroom, Arthur, Living Room, Bathroom) with target temperature and power control.
-- Live window open/closed indicator on each Radiators room page, driven by a Home Assistant `binary_sensor` contact sensor (Bathroom has none by default).
-- Timer alarm: plays an RTTTL tune through the onboard buzzer when the countdown reaches zero, repeats until dismissed, and auto-stops after 60 seconds. Cancelable by touch or encoder rotation, which also resets the timer.
-- **Buzzer** on/off toggle in Settings (`buzzer_enabled` global, persisted across reboots).
-- Rotating the encoder more than one detent from the home screen now opens the main menu (in addition to the existing swipe gesture).
-- New icons: `radiator.png`, `speaker.png`, `window_open.png`, `window_closed.png`; the Display/Menu Timeout Settings entries now reuse `timer.png`.
-- `src/main/globals.yaml` centralizes user-tunable values (scroll speed, timeouts, buzzer default) that were previously scattered across page files.
+- **Radiators** in the main menu: five rooms (Kitchen, Bedroom, Arthur, Living Room, Bathroom), each with target temperature and power.
+- Live **window open/closed icon** on each radiator page from a Home Assistant contact sensor (Bathroom has none).
+- **Timer alarm**: an RTTTL tune on the buzzer at zero, repeating until dismissed, stopping by itself after 60 s. A touch or a turn cancels it and resets the timer.
+- **Buzzer** on/off in Settings (saved).
+- Turning the knob more than one click on the home screen opens the main menu, like the swipe.
+- Icons `radiator.png`, `speaker.png`, `window_open.png`, `window_closed.png`; Display/Menu Timeout reuse `timer.png`.
 
 ### Changed
-
-- Rolling/marquee label text (menu tiles with names too long to fit) now scrolls at a slower, user-tunable speed (`scroll_anim_speed`) instead of LVGL's default.
-- Removed the subtitle line under the Timer and Lights main menu entries.
-- Home screen's AC menu tile now shows live fan speed and room temperature instead of static placeholder text.
+- Menu tiles with names too long to fit scroll slower, at an adjustable speed (`scroll_anim_speed`).
+- The Timer and Lights menu entries lost their subtitle line.
+- The home screen's AC tile shows the live fan speed and room temperature instead of placeholder text.
+- The Fridge menu item and page are commented out in `dial.yaml` and `src/pages/menu.yaml`, kept for later.
+- Buzzer volume control was removed: neither `output.set_level()` nor `set_gain()` made an audible difference, because the RTTTL component re-applies its own gain on every note. The on/off switch replaces it.
 
 ### Fixed
+- Waking the screen with the knob no longer also opens the menu: the step counter resets on sleep/wake and a short cooldown swallows the rest of the turn.
+- The degree sign no longer overlaps the digits (`17.5°`): it's part of the same label now.
+- The window icon shows the real state right after a reboot. ESPHome's `homeassistant` binary sensor gets the current state on connect but doesn't fire `on_state` for it; `trigger_on_initial_state: true` fixes that.
+- Wrong AC entity, `hvac_mode` and `fan_mode` from the first setup; the README now says to check *Developer Tools → States* first.
 
-- Encoder wake-from-sleep gesture no longer bleeds into the "open menu" gesture; the step accumulator resets on sleep/wake and a short cooldown window swallows the rest of the waking turn.
-- Degree symbol no longer collides with the temperature digits (e.g. `17.5°`) — the symbol is now part of the same label instead of a separately positioned one.
-- Window indicator now reflects the sensor's real state immediately after a reboot/reflash. Root cause: ESPHome's `homeassistant` binary_sensor platform does receive the current state from Home Assistant right away on reconnect, but by default does not fire the `on_state` automation for that first value — only for state changes afterward. Fixed by setting `trigger_on_initial_state: true` on each window binary_sensor.
-- Fixed wrong AC entity/hvac_mode/fan_mode assumptions from the initial setup (now documented as "check Developer Tools → States first" in this README).
+### Under the hood
+- `src/main/globals.yaml` collects the user-tunable values (scroll speed, timeouts, buzzer default) that were spread over the page files.
 
-### Removed
-
-- Attempted buzzer volume control (`output.set_level()`, then `set_gain()`) — neither produced an audible change since the RTTTL component re-applies its own gain on every note. Replaced with the simple on/off toggle above.
-
-### Disabled
-
-- Fridge menu item and page are commented out (not deleted) in `dial.yaml` and `src/pages/menu.yaml`, kept for reference/restoration.
-
-## [1.2.0] - Rolling text & globals cleanup
+## v1.2.0 — 2026-07-13
 
 ### Added
-
 - `src/main/globals.yaml` for the first user-tunable values.
 
 ### Changed
+- The scroll speed of rolling text is adjustable instead of hard-coded.
 
-- Rolling-text scroll speed is now configurable instead of hardcoded.
-
-## [1.1.0] - Home Assistant lights, Settings, AC fix
+## v1.1.0 — 2026-07-13
 
 ### Added
-
-- Home Assistant Lights submenu: onboard LED ring plus five `light.*` entities and one `switch.*` entity, each with a simple on/off + brightness page.
-- Settings submenu: Display Timeout (backlight sleep) and Menu Timeout (idle return to home), both persisted across reboots.
-- Example `secrets.yaml` template.
+- **Lights** submenu: the LED ring plus five Home Assistant lights and one switch, each with on/off and brightness.
+- **Settings** submenu: Display Timeout (screen sleep) and Menu Timeout (back to the clock), both saved across reboots.
+- `secrets.example.yaml` template.
 - Demo video link in the README.
 
 ### Fixed
+- The AC page pointed at a placeholder entity; now a real climate entity with matching `hvac_mode` strings.
 
-- AC entity configuration pointed at a placeholder entity ID; corrected to a real climate entity and hvac_mode strings.
+## v1.0.0 — 2026-06-04
 
-## [1.0.0] - 2026 - Initial public release
+Initial public release by [Jasionf/smart-home-button](https://github.com/Jasionf/smart-home-button), which this repository forks.
 
 ### Added
-
-- Clock page with time, date, weather, humidity, AQI, pressure, and wind speed.
-- Circular menu navigation for the round display.
-- Onboard LED ring control (brightness, color, preset flows).
-- AC (climate) control page: target temperature, power, fan speed.
-- Music page with SendSpin playback state, cover art, progress, and transport controls.
+- Clock page with time, date, weather, humidity, AQI, pressure and wind.
+- Round menu carousel.
+- LED ring control: brightness, color, presets.
+- AC page: target temperature, power, fan speed.
+- Music page: SendSpin playback state, cover art, progress, transport buttons.
 - Fridge status page.
-- Countdown timer page.
-- Battery power-hold support for M5Dial V1.1.
+- Countdown timer.
+- Battery power hold for the M5Stack Dial V1.1.
