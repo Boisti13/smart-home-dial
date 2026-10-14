@@ -28,8 +28,9 @@ those notes.
 ## Checking a change
 
 **ESPHome checks run on the build server**, CT 117 `esphome-builder` on
-pve_rptu_dev (owner, 2026-10-14), never on the Windows PCs. From this
-folder, on any PC or the dev box:
+pve_rptu_dev, never locally as long as pve_rptu_dev is reachable (owner,
+2026-10-14); only if it isn't, fall back to a local venv. From this folder,
+on any PC or the dev box:
 
 ```bash
 bash ../claude-setup/scripts/esphome-check.sh dial.yaml config    # every change
