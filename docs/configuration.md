@@ -102,8 +102,9 @@ Dial can't sync it. The page itself talks to SendSpin; see
 
 The clock's time zone is set in `src/pages/main.yaml`, **twice**: on the
 `pcf8563` time (`rtctime`) and on the `homeassistant` time (`esptime`). It is
-currently `Asia/Shanghai`, inherited from the upstream project. Change both
-to your own, e.g. `Europe/Berlin`.
+`Europe/Berlin` (since v1.4.1; upstream used `Asia/Shanghai`). Elsewhere,
+change both to your own [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones),
+e.g. `Europe/London`; if only one is changed, the clock jumps after every sync.
 
 ## Flashing
 

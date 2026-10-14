@@ -20,7 +20,7 @@ esphome:
   friendly_name: M5Stack Dial
   project:
     name: "smart-home-dial.firmware"
-    version: "1.4.0"
+    version: "1.4.1"
   on_boot:
     - priority: 800
       then:

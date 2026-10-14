@@ -4,7 +4,7 @@
 
 # Smart Home Dial
 
-[![Version](https://img.shields.io/badge/version-1.4.0-orange)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.1-orange)](CHANGELOG.md)
 [![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.3.3-blue?logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/platform-ESP32--S3-red?logo=espressif)](#hardware)
 [![Display](https://img.shields.io/badge/display-GC9A01A%20240x240-purple)](#hardware)

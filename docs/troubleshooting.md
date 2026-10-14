@@ -4,7 +4,7 @@
 |---|---|
 | **Device unavailable in Home Assistant** | The `api:` section must be in `dial.yaml` and port 6053 reachable from Home Assistant. |
 | **Buttons do nothing in Home Assistant** (AC, lights, radiators) | Turn on *Allow the device to perform Home Assistant actions* in the ESPHome device's options. For AC and radiators, also check that the `hvac_mode` / `fan_mode` strings exist on the entity ([AC](pages.md#ac), [Radiators](pages.md#radiators)). |
-| **Clock is hours off** | The time zone in `src/pages/main.yaml` is still `Asia/Shanghai`; change both entries ([configuration](configuration.md#time-zone)). |
+| **Clock is hours off** | Firmware older than v1.4.1 still used upstream's `Asia/Shanghai`; update. Outside Germany, set your own zone in both entries in `src/pages/main.yaml` ([configuration](configuration.md#time-zone)). |
 | **Wrong weather values** | Change `weather_entity` in `src/main/entities.yaml`. |
 | **AQI stuck on `--`** | `aqi_entity` must be an air-quality sensor whose *state* is the index, not an attribute of the weather entity. |
 | **Wrong AC** | Change `climate_entity` in `src/main/entities.yaml`. |

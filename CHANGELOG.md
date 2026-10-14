@@ -6,10 +6,15 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v1.4.1 — 2026-10-14
+
+### Fixed
+- **Clock shows German time**: the time zone was still upstream's `Asia/Shanghai`, so the clock ran 6–7 hours ahead. Both time sources in `src/pages/main.yaml` (`rtctime`, `esptime`) now use `Europe/Berlin`, with summer time.
+
 ### Under the hood
 - **`CLAUDE.md`** with the working rules for this repository: `dev` only, validate before committing, what to update with a change, the release routine.
 - README rewritten: shorter, with *Highlights*, tables for pages, hardware, install steps and Home Assistant entities, and a worked example (a motion alarm for the bedroom). The per-page notes moved to **[docs/pages.md](docs/pages.md)**, the common issues to **[docs/troubleshooting.md](docs/troubleshooting.md)**.
-- `docs/configuration.md` lists every entity, the *Allow the device to perform Home Assistant actions* switch, and the time zone (still `Asia/Shanghai` from upstream, set twice in `src/pages/main.yaml`).
+- `docs/configuration.md` lists every entity, the *Allow the device to perform Home Assistant actions* switch, and the time zone (set twice in `src/pages/main.yaml`).
 - `docs/development.md` replaces `docs/project-structure.md` and `docs/release-checklist.md`: layout, naming, checking a change, versions, releases, upstream.
 - Documented that the config only validates with the pinned ESPHome 2026.3.3: on 2026.9.1 the local `components/const` and `components/image` overrides break the `esp32` platform ("Platform missing").
 - This changelog now uses the same layout as the owner's other projects (*Added / Changed / Fixed / Under the hood*, newest first).
