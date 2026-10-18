@@ -4,7 +4,7 @@
 
 # Smart Home Dial
 
-[![Version](https://img.shields.io/badge/version-2.1.0-orange)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.1-orange)](CHANGELOG.md)
 [![ESPHome](https://img.shields.io/badge/ESPHome-tested%202026.9.1-blue?logo=esphome)](https://esphome.io/)
 [![Platform](https://img.shields.io/badge/platform-ESP32--S3-red?logo=espressif)](#hardware)
 [![Display](https://img.shields.io/badge/display-GC9A01A%20240x240-purple)](#hardware)
@@ -91,6 +91,7 @@ Written for the **M5Stack Dial V1.1**.
 | 4. Check | `esphome config dial.yaml` |
 | 5. Flash | first time over USB: `esphome run dial.yaml --device <port>`; later over Wi-Fi: `esphome run dial.yaml` |
 | 6. Home Assistant | Optional: build and flash from HA's ESPHome app instead ([how](docs/configuration.md#home-assistants-esphome-app)). Adopt the device under *Settings → Devices & services → ESPHome*, and turn on **Allow the device to perform Home Assistant actions** |
+| 7. Fast wake (optional) | Copy `packages/smart_home_dial.yaml` to `/config/packages/` and set the webhook secrets, so Home Assistant reconnects right after a touch-wake ([how](docs/configuration.md#fast-reconnect-after-a-touch-wake)) |
 
 ```bash
 python3 -m venv ~/.venvs/esphome && source ~/.venvs/esphome/bin/activate
@@ -182,6 +183,7 @@ smart-home-dial/
 │   │   └── power.yaml      battery saving: deep sleep with touch wake, Sleep After, Stay Awake
 │   ├── pages/              one LVGL page per feature (main = clock, menu, light, ha_lights, radiators, air, timer, settings, load)
 │   └── assets/             fonts and small icons (no PSRAM: keep them small)
+├── packages/               Home Assistant package: fast reconnect after a touch-wake
 ├── hardware/3d-models/     STL files for the case
 └── docs/                   the guides above and gallery images
 ```

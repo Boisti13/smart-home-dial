@@ -17,6 +17,7 @@ for working on it is in [CLAUDE.md](../CLAUDE.md).
 | `src/main/power.yaml` | Battery saving: deep sleep with touch wake, *Sleep After*, *Stay Awake*, NFC power-down |
 | `src/pages/*.yaml` | One LVGL page per feature, each an ESPHome package |
 | `src/assets/fonts/`, `src/assets/images/` | Local fonts and small icons |
+| `packages/smart_home_dial.yaml` | Home Assistant package (webhook automation for the fast reconnect after a touch-wake); the live copy is `/config/packages/smart_home_dial.yaml` |
 | `hardware/3d-models/` | STL files for the case |
 | `docs/` | Guides; `docs/images/gallery/` holds the photos used in the README |
 

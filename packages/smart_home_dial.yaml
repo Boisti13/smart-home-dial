@@ -1,0 +1,30 @@
+# packages/smart_home_dial.yaml — Home Assistant side of the M5Stack Dial
+# (https://github.com/Boisti13/smart-home-dial).
+#
+# Fast reconnect after a touch-wake from deep sleep: Home Assistant's ESPHome
+# integration retries a sleeping device only every ~minute, so the Dial waited
+# up to a minute for live values. On a touch-wake the Dial POSTs this webhook
+# (secret dial_wake_url in ESPHome's secrets.yaml); reloading its ESPHome
+# entry makes Home Assistant connect at once.
+#
+# Devices: M5Stack Dial (ESPHome device m5stack-dialv1).
+# Needs dial_wake_webhook in /config/secrets.yaml: the same random ID as at the
+# end of dial_wake_url.
+
+automation:
+  - id: smart_home_dial_wake_reconnect
+    alias: "M5Stack Dial – Reconnect after touch-wake"
+    description: >-
+      The Dial woke from deep sleep and asks for its ESPHome connection right
+      away instead of at Home Assistant's next retry (up to a minute later).
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: webhook
+        webhook_id: !secret dial_wake_webhook
+        allowed_methods: [POST]
+        local_only: true
+    actions:
+      - action: homeassistant.reload_config_entry
+        target:
+          entity_id: sensor.m5stack_dial_wi_fi_signal   # any entity of the Dial's ESPHome entry

@@ -269,11 +269,14 @@ Alert rings, or an OTA update runs.
 it, and NFC tags aren't read. Home Assistant knows the Dial uses deep sleep
 and keeps showing its last values instead of *unavailable*.
 
-**Waking takes a while.** After a touch the Dial boots in about a second,
-but Home Assistant only reconnects at its next retry: after a long sleep it
-waits up to a minute between tries, unless it hears the Dial's mDNS
-announcement (37 s in the first test, against 6 s for a reboot while
-connected). A change of `season_mode_entity` while it sleeps only shows in the
+**Waking.** After a touch the Dial boots in about a second. Home
+Assistant on its own only reconnects at its next retry: after a long sleep
+it waits up to a minute between tries (37 s in the first test, against 6 s
+for a reboot while connected). So as soon as Wi-Fi is up, the Dial POSTs a
+webhook (`dial_wake_url`), and the automation in
+`packages/smart_home_dial.yaml` reloads its ESPHome entry: Home Assistant
+connects at once. Without the package the Dial still works, it just waits
+for Home Assistant's retry ([setup](configuration.md#fast-reconnect-after-a-touch-wake)). A change of `season_mode_entity` while it sleeps only shows in the
 menu at the next change. For an OTA update, wake it and turn on *Stay
 Awake* first (Home Assistant can't reach it while it sleeps).
 

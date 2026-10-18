@@ -67,6 +67,11 @@ bash ../claude-setup/scripts/esphome-check.sh dial.yaml           # + compile: a
   must stay high or the board switches off: latch it before deep sleep and
   release it at boot (`dial.yaml` on_boot priority 1000). Anything that
   draws while the screen is dark goes into `sleep_display` / `wake_display`.
+- **Home Assistant package** `packages/smart_home_dial.yaml` goes to
+  `/config/packages/smart_home_dial.yaml` (back up into
+  `/config/project-backups/home-assistant/` first), then `ha core check`
+  and reload automations. Its webhook ID is the secret `dial_wake_webhook`
+  (HA) / the end of `dial_wake_url` (ESPHome); never in the repo.
 - Hardware facts: no PSRAM (keep images and LVGL buffers small); the encoder
   gives ~4 raw ticks per click (debounce value pages through
   `encoder_step_threshold`, see [docs/pages.md](docs/pages.md#dial-sensitivity)).

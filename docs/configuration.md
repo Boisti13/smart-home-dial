@@ -126,6 +126,25 @@ the main menu ([pages.md → Menu items](pages.md#menu-items)).
 winter, unless the switch *Menu Follows Season* is off. Without such a helper, create one under *Settings → Devices &
 services → Helpers → Dropdown* with exactly those two options.
 
+## Fast reconnect after a touch-wake
+
+After a long deep sleep, Home Assistant only retries the Dial about once a
+minute. The Dial therefore asks for a connection itself: right after a
+touch-wake it POSTs a Home Assistant webhook, and an automation reloads its
+ESPHome entry.
+
+1. Make up a random webhook ID (e.g. `openssl rand -hex 16`).
+2. ESPHome's `secrets.yaml`:
+   `dial_wake_url: "http://<home-assistant>:8123/api/webhook/<ID>"`
+3. Home Assistant's `/config/secrets.yaml`: `dial_wake_webhook: "<ID>"`
+4. Copy `packages/smart_home_dial.yaml` to `/config/packages/` (packages
+   enabled with `homeassistant: packages: !include_dir_named packages`),
+   check the configuration, reload automations.
+
+The webhook only accepts POSTs from the local network. Without these steps
+the Dial still wakes and works; its call simply goes nowhere and Home
+Assistant connects at its next retry.
+
 ## Time zone
 
 The clock's time zone is set in `src/pages/main.yaml`, **twice**: on the

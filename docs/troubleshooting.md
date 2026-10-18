@@ -24,5 +24,6 @@
 | **First build can't download fonts** | Connect to the internet once, or replace `gfonts://` fonts with local files. |
 | **Turns off on battery** | The V1.1 power-hold pin (GPIO46) must be switched on at boot ([Battery and sleep](pages.md#battery-and-sleep)). |
 | **Home Assistant can't reach the Dial** (actions do nothing, values don't change) | Probably in deep sleep: touch it. For updates or automations that need it, turn on *Stay Awake* or set *Sleep After* to 0 ([Battery and sleep](pages.md#battery-and-sleep)). |
+| **Values take up to a minute after a touch-wake** | The fast-reconnect webhook isn't set up or doesn't match: `dial_wake_url` (ESPHome secrets) must end in the `dial_wake_webhook` ID (HA secrets), and `packages/smart_home_dial.yaml` must be loaded; its automation's trace shows each call ([setup](configuration.md#fast-reconnect-after-a-touch-wake)). |
 | **Turning the ring doesn't wake it** | Deep sleep only wakes on touch; the ring and button only wake a dark screen. |
 | **Doesn't wake from deep sleep at all** | The power latch didn't hold or the touch controller didn't signal: press the front button to power it on, set *Sleep After* to 0, and report it. |

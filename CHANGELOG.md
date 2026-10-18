@@ -6,6 +6,14 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v2.1.1 — 2026-10-18
+
+### Added
+- **Fast reconnect after a touch-wake**: the Dial POSTs a Home Assistant webhook (`dial_wake_url` in `secrets.yaml`) as soon as Wi-Fi is up, and the automation in the new **`packages/smart_home_dial.yaml`** reloads its ESPHome entry, so Home Assistant connects at once instead of at its next retry (37 s in the first test). Optional: without the package the Dial works as before ([setup](docs/configuration.md#fast-reconnect-after-a-touch-wake)).
+
+### Under the hood
+- `http_request` component (flash 78 → 83 %).
+
 ## v2.1.0 — 2026-10-18
 
 Test version for the battery: built and copied to Home Assistant, not yet

@@ -19,6 +19,15 @@
 # latched high through deep sleep (gpio_hold_en); dial.yaml releases it at
 # the next boot. Without that the board would switch itself off instead.
 
+# Fast reconnect: after a touch-wake the Dial POSTs a Home Assistant webhook
+# (secret dial_wake_url) whose automation reloads the Dial's ESPHome entry,
+# so HA connects at once instead of at its next retry (37 s in the first
+# test). HA side: packages/smart_home_dial.yaml.
+http_request:
+  id: http_client
+  timeout: 5s
+  verify_ssl: false
+
 deep_sleep:
   id: deep_sleep_ctrl
   wakeup_pin:
@@ -76,6 +85,21 @@ interval:
           id(enter_deep_sleep).execute();
 
 script:
+  # Called at boot after a touch-wake (dial.yaml).
+  - id: notify_ha_awake
+    mode: single
+    then:
+      - wait_until:
+          condition:
+            wifi.connected:
+          timeout: 20s
+      - if:
+          condition:
+            lambda: 'return !id(ha_connected);'
+          then:
+            - http_request.post:
+                url: !secret dial_wake_url
+
   # RC522: stop polling and switch the chip (and its RF field) off.
   - id: nfc_power_down
     then:
