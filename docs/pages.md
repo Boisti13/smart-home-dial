@@ -8,7 +8,6 @@ change it. Entity IDs are set in `src/main/entities.yaml`; see
 - [AC](#ac)
 - [Radiators](#radiators)
 - [Lights](#lights)
-- [Music](#music)
 - [Timer and buzzer](#timer-and-buzzer)
 - [Motion Alert](#motion-alert)
 - [Settings](#settings)
@@ -16,7 +15,7 @@ change it. Entity IDs are set in `src/main/entities.yaml`; see
 - [Dial sensitivity](#dial-sensitivity)
 - [Menu navigation](#menu-navigation)
 - [Tunable defaults](#tunable-defaults)
-- [Battery](#battery)
+- [Battery and sleep](#battery-and-sleep)
 - [NFC](#nfc)
 - [Home Assistant offline](#home-assistant-offline)
 - [Diagnostics](#diagnostics)
@@ -96,20 +95,6 @@ To change lights or their number, edit only `src/main/entities.yaml`:
 `light_count` (1–6) and `light_N_name` / `light_N_entity` per slot. Slots
 above the count are ignored but still need a valid entity ID.
 
-## Music
-
-`src/pages/music.yaml`. Media state, transport commands and album art come
-from ESPHome's built-in `sendspin` component. The Home
-Assistant media player (`music_player_entity`) is also read for status,
-volume, duration and progress when it has those attributes.
-
-- Album art is kept small on purpose: the Dial has no PSRAM, and bigger
-  images or a bigger LVGL buffer can make it reboot when artwork arrives.
-- If volume does nothing, check that the media player actually exposes
-  writable volume. Some only report playback state.
-- For a Home Assistant-only music page, replace the SendSpin command scripts
-  with standard `media_player` actions.
-
 ## Timer and buzzer
 
 `src/pages/timer.yaml`. Set the duration with the knob and start it. At zero
@@ -148,7 +133,7 @@ or touch a row to focus it, then turn the knob (on/off, or ±5 s).
 
 ## Settings
 
-`src/pages/settings.yaml`, six entries:
+`src/pages/settings.yaml`, seven entries:
 
 | Entry | What it does | Default | Range |
 |---|---|---|---|
@@ -158,6 +143,7 @@ or touch a row to focus it, then turn the knob (on/off, or ±5 s).
 | **Motion Alert** | See [above](#motion-alert) | | |
 | **Dial Sensitivity** | See [below](#dial-sensitivity) | 4 | 1–10 |
 | **Menu Items** | Which pages the main menu shows; see [below](#menu-items) | all on | |
+| **Sleep After** | Minutes the screen stays dark before deep sleep; see [Battery and sleep](#battery-and-sleep) | 5 min | 0 (never) – 60 min |
 
 All values are saved across reboots. Both timeouts share one activity
 tracker that any touch or turn resets. Defaults are in
@@ -166,7 +152,7 @@ tracker that any touch or turn resets. Defaults are in
 
 ## Menu items
 
-Timer, Lights, Radiators, AC and Music can each be hidden from the main
+Timer, Lights, Radiators and AC can each be hidden from the main
 menu. **Settings and Home are always there**, so there's always a way back.
 The carousel and its dots show only the items that are on; with fewer than
 five, the empty slots stay blank instead of repeating an item.
@@ -175,9 +161,8 @@ five, the empty slots stay blank instead of repeating an item.
   *Auto Season* (below). Turn the
   knob to switch the focused row on or off (green = on); tap a row or press
   the button to focus the next one.
-- **From Home Assistant**: the device has five switches, *Menu Timer*,
-  *Menu Lights*, *Menu Radiators*, *Menu AC*, *Menu Music*, plus *Menu
-  Follows Season* (entity IDs like
+- **From Home Assistant**: the device has four switches, *Menu Timer*,
+  *Menu Lights*, *Menu Radiators*, *Menu AC*, plus *Menu Follows Season* (entity IDs like
   `switch.m5stack_dial_menu_timer`, under the device's *Configuration*).
   Usable in automations too, e.g. hide AC in winter.
 
@@ -223,7 +208,7 @@ Every debounced interaction uses the same threshold and pattern:
 | Display Timeout, Menu Timeout, Dial Sensitivity | `display_timeout_encoder_accum`, `menu_timeout_encoder_accum`, `dial_sensitivity_encoder_accum` |
 | Main, Lights, Radiators and Settings carousels | `menu_scroll_encoder_accum` (`src/pages/main.yaml`; shared, only one carousel is open at a time) |
 
-Radiator temperature, light brightness, music volume and the color picker
+Radiator temperature, light brightness and the color picker
 are deliberately **not** debounced: they should react to every tick.
 
 ## Menu navigation
@@ -260,11 +245,43 @@ swallowed (short cooldown) so it doesn't also open the menu.
 
 Any label can reuse it: `lv_obj_set_style_anim_duration(label, lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN)` (see the `on_boot` lambda in `dial.yaml`).
 
-## Battery
+## Battery and sleep
 
-The M5Stack Dial V1.1 needs its hold pin high to stay on from battery.
-`dial.yaml` turns on GPIO46 first thing at boot; the `power_hold` switch is
-defined in `src/main/hardware.yaml`.
+The Dial runs on its LiPo. Awake and idle it lasted about 10½ hours
+(measured 2026-10-15, before v2.1.0), so `src/main/power.yaml` saves in two
+stages:
+
+| Stage | When | What happens | Wakes on |
+|---|---|---|---|
+| **Screen dark** | *Display Timeout* (30 s) without input | backlight off, LVGL paused (nothing is drawn), NFC reader powered down and not polled; Wi-Fi in light power-save all the time | turn, touch or button, instantly |
+| **Deep sleep** | *Sleep After* (5 min) after the screen went dark | the ESP32 sleeps; offline in Home Assistant | **touch only**, then about 8 s until values are live |
+
+**Touch only**, because deep sleep can only be ended by an RTC pin: the
+touch controller's interrupt is on GPIO14 (RTC), the ring on GPIO40/41 and
+the button on GPIO42 are not. After a touch the Dial boots straight to the
+clock (the RTC chip has the time) with the *HA offline* pill until Home
+Assistant is connected, instead of the boot animation.
+
+**It stays awake** while *Stay Awake* is on, a timer runs or rings, Motion
+Alert rings, or an OTA update runs.
+
+**While it sleeps** Motion Alert can't fire, Home Assistant shows the
+Dial's entities as unavailable and can't control it, and NFC tags aren't
+read. A change of `season_mode_entity` while it sleeps only shows in the
+menu at the next change. For an OTA update, wake it and turn on *Stay
+Awake* first (Home Assistant can't reach it while it sleeps).
+
+| Setting | On the Dial | In Home Assistant |
+|---|---|---|
+| Sleep After | *Settings → Sleep After*, turn the knob (0 = never) | `number.m5stack_dial_sleep_after` |
+| Stay Awake | – | `switch.m5stack_dial_stay_awake` |
+
+**Power latch.** The Dial only stays on from battery while its hold pin
+GPIO46 is high. `dial.yaml` drives it high first thing at boot, and before
+deep sleep `power.yaml` latches it (`gpio_hold_en`, with GPIO9, the
+backlight, latched low); the next boot releases both. Without the latch the
+board would switch itself off instead of sleeping, and only the front
+button would turn it on again.
 
 ## NFC
 

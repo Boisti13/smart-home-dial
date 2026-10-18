@@ -45,12 +45,6 @@ image:
     transparency: alpha_channel
     resize: 32x32
   - platform: file
-    file: ${dial_dir}/src/assets/images/music.png
-    id: menu_img_music
-    type: RGB565
-    transparency: alpha_channel
-    resize: 34x34
-  - platform: file
     file: ${dial_dir}/src/assets/images/timer.png
     id: menu_img_timer
     type: RGB565
@@ -150,17 +144,6 @@ switch:
     on_turn_off:
       - script.execute: menu_items_changed
   - platform: template
-    id: menu_show_music
-    name: "Menu Music"
-    icon: mdi:music
-    entity_category: config
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
-    on_turn_on:
-      - script.execute: menu_items_changed
-    on_turn_off:
-      - script.execute: menu_items_changed
-  - platform: template
     id: menu_follow_season
     name: "Menu Follows Season"
     icon: mdi:sun-snowflake-variant
@@ -214,10 +197,10 @@ script:
       dir: int
     then:
       - lambda: |-
-          const bool VIS[7] = {id(menu_show_timer).state, id(menu_show_lights).state, id(menu_show_radiators).state, id(menu_show_ac).state, id(menu_show_music).state, true, true};
+          const bool VIS[6] = {id(menu_show_timer).state, id(menu_show_lights).state, id(menu_show_radiators).state, id(menu_show_ac).state, true, true};
           int s = id(menu_sel);
-          for (int k = 0; k < 7; k++) {
-            s = ((s + dir) % 7 + 7) % 7;
+          for (int k = 0; k < 6; k++) {
+            s = ((s + dir) % 6 + 6) % 6;
             if (VIS[s]) break;
           }
           id(menu_sel) = s;
@@ -233,7 +216,7 @@ script:
 
   - id: enter_menu
     then:
-      - globals.set: {id: menu_sel, value: '6'}
+      - globals.set: {id: menu_sel, value: '5'}
       - script.execute: open_menu
 
   - id: close_menu
@@ -260,7 +243,7 @@ script:
                 lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
                 lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
                   const int SLOT_N = 5;
-                  const int ITEM_N = 7;
+                  const int ITEM_N = 6;
                   const int OFFSETS[5] = {-2, -1, 0, 1, 2};
                   const float CY = 120.0f;
                   const float ARC_CX = 162.0f;
@@ -349,7 +332,7 @@ script:
                   lv_obj_set_style_opa(id(slot_center_sub), center_sub_opa, LV_PART_MAIN);
 
                   // Animate arrow indicator upward
-                  const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
+                  const int dot_offsets[6] = {-35, -21, -7, 7, 21, 35};
                   int from_dot = id(menu_sel);
                   int to_dot = ((from_dot - 1) % ITEM_N + ITEM_N) % ITEM_N;
                   int arrow_y = (int)(dot_offsets[from_dot] + (dot_offsets[to_dot] - dot_offsets[from_dot]) * phase);
@@ -379,7 +362,7 @@ script:
                 lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
                 lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
                   const int SLOT_N = 5;
-                  const int ITEM_N = 7;
+                  const int ITEM_N = 6;
                   const int OFFSETS[5] = {-2, -1, 0, 1, 2};
                   const float CY = 120.0f;
                   const float ARC_CX = 162.0f;
@@ -468,7 +451,7 @@ script:
                   lv_obj_set_style_opa(id(slot_center_sub), center_sub_opa, LV_PART_MAIN);
 
                   // Animate arrow indicator downward
-                  const int dot_offsets[7] = {-42, -28, -14, 0, 14, 28, 42};
+                  const int dot_offsets[6] = {-35, -21, -7, 7, 21, 35};
                   int from_dot = id(menu_sel);
                   int to_dot = (from_dot + 1) % ITEM_N;
                   int arrow_y = (int)(dot_offsets[from_dot] + (dot_offsets[to_dot] - dot_offsets[from_dot]) * phase);
@@ -490,15 +473,14 @@ script:
           else if (sel == 1) { id(enter_lights_menu).execute(); }
           else if (sel == 2) { id(enter_radiators_menu).execute(); }
           else if (sel == 3) { id(open_air).execute(); }
-          else if (sel == 4) { id(open_music).execute(); }
-          else if (sel == 5) { id(enter_settings_menu).execute(); }
-          else if (sel == 6) { id(close_menu).execute(); }
+          else if (sel == 4) { id(enter_settings_menu).execute(); }
+          else if (sel == 5) { id(close_menu).execute(); }
           else               { id(close_menu).execute(); }
 
   - id: refresh_menu
     then:
       - lambda: |-
-          const int ITEM_N = 7;
+          const int ITEM_N = 6;
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -543,46 +525,42 @@ script:
             }
           }
 
-          const char* TITLES[7]    = {"Timer", "Lights", "Radiators", "AC", "Music", "Settings", "Home"};
-          const char* SUBTITLES[7] = {"", "",
+          const char* TITLES[6]    = {"Timer", "Lights", "Radiators", "AC", "Settings", "Home"};
+          const char* SUBTITLES[6] = {"", "",
                                       "",  ac_menu_sub,
-                                      "Living Rm - Off",  "",
-                                      "Back to Main"};
-          const lv_img_dsc_t* IMGS[7] = {
+                                      "", "Back to Main"};
+          const lv_img_dsc_t* IMGS[6] = {
             id(menu_img_timer)->get_lv_image_dsc(),
             id(menu_img_light)->get_lv_image_dsc(),
             id(menu_img_radiator)->get_lv_image_dsc(),
             id(menu_img_ac)->get_lv_image_dsc(),
-            id(menu_img_music)->get_lv_image_dsc(),
             id(menu_img_settings)->get_lv_image_dsc(),
             id(menu_img_home)->get_lv_image_dsc()
           };
-          // Per-item accent colors: Timer, Lights, Radiators, AC, Music, Settings, Home
-          const uint32_t ACCENT_COLORS[7] = {
+          // Per-item accent colors: Timer, Lights, Radiators, AC, Settings, Home
+          const uint32_t ACCENT_COLORS[6] = {
             0xFB923C,  // Timer     - orange
             0xFDC003,  // Lights    - yellow
             0xFB923C,  // Radiators - orange
             0x5ABBFD,  // AC        - ice blue
-            0xA792E8,  // Music     - purple
             0x9CA3AF,  // Settings  - silver
             0x576BFE   // Home      - blue
           };
           // Pill bg: darker version of accent
-          const uint32_t PILL_COLORS[7] = {
+          const uint32_t PILL_COLORS[6] = {
             0x2A1200,  // Timer
             0x2A1E00,  // Lights
             0x2A1200,  // Radiators
             0x001A2A,  // AC
-            0x150A2A,  // Music
             0x1E2024,  // Settings
             0x0D1537   // Home
           };
           // Only the items switched on (menu_show_*) take part. vis[] lists
           // their indices; p is the selected item's place in that list.
-          const bool VIS[7] = {id(menu_show_timer).state, id(menu_show_lights).state, id(menu_show_radiators).state, id(menu_show_ac).state, id(menu_show_music).state, true, true};
+          const bool VIS[6] = {id(menu_show_timer).state, id(menu_show_lights).state, id(menu_show_radiators).state, id(menu_show_ac).state, true, true};
           if (!VIS[id(menu_sel)]) id(menu_step).execute(1);
           int sel = id(menu_sel);
-          int vis[7];
+          int vis[6];
           int N = 0;
           int p = 0;
           for (int i = 0; i < ITEM_N; i++) {
@@ -693,8 +671,8 @@ script:
           }
 
           // Indicator dots: one per shown item, centred; selected = rotated square
-          lv_obj_t* sdots[7] = {
-            id(sdot_0), id(sdot_1), id(sdot_2), id(sdot_3), id(sdot_4), id(sdot_5), id(sdot_6)
+          lv_obj_t* sdots[6] = {
+            id(sdot_0), id(sdot_1), id(sdot_2), id(sdot_3), id(sdot_4), id(sdot_5)
           };
           for (int d = 0; d < ITEM_N; d++) {
             if (d >= N) {
@@ -901,14 +879,14 @@ lvgl:
                               id: slot_far_dn_img
                               align: LEFT_MID
                               x: 2
-                              src: menu_img_music
+                              src: menu_img_settings
                           - label:
                               id: slot_far_dn_lbl
                               align: LEFT_MID
                               x: 38
                               text_font: font_menu_item
                               text_color: col_menu_dim
-                              text: "Music"
+                              text: ""
                               text_opa: 25%
 
               - obj:
@@ -1000,19 +978,6 @@ lvgl:
                   align: RIGHT_MID
                   x: -10
                   y: 28
-                  width: 5
-                  height: 5
-                  radius: 3
-                  bg_color: col_menu_sdot_dim
-                  bg_opa: COVER
-                  border_width: 0
-                  clickable: false
-                  scrollbar_mode: "OFF"
-              - obj:
-                  id: sdot_6
-                  align: RIGHT_MID
-                  x: -10
-                  y: 42
                   width: 5
                   height: 5
                   radius: 3

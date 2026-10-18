@@ -6,7 +6,6 @@ substitutions:
   outdoor_pressure_entity: sensor.virtual_outdoor_pressure
   aqi_entity: sensor.kaiserslautern_rathausplatz_germany_air_quality_index
   climate_entity: climate.pinguino
-  music_player_entity: media_player.speaker_1_sendspin_media_player
 
   # Lights submenu: the Dial Ring, then up to 6 Home Assistant lights or
   # switches. light_count says how many slots are used (1-6); slots above it

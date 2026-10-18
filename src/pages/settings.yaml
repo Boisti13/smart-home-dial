@@ -32,6 +32,12 @@ globals:
   - id: in_menu_timeout
     type: bool
     initial_value: 'false'
+  - id: in_sleep_after
+    type: bool
+    initial_value: 'false'
+  - id: sleep_after_encoder_accum
+    type: int
+    initial_value: '0'   # debounces the encoder so one physical click = one step change
   - id: menu_timeout_encoder_accum
     type: int
     initial_value: '0'   # debounces the encoder so one physical click = one step change
@@ -58,7 +64,7 @@ globals:
     initial_value: 'false'
   - id: menu_items_field
     type: int
-    initial_value: '0'   # which row is focused on the Menu Items page: 0=Timer ... 4=Music, 5=Auto Season
+    initial_value: '0'   # which row is focused on the Menu Items page: 0=Timer ... 3=AC, 4=Auto Season
   - id: menu_items_encoder_accum
     type: int
     initial_value: '0'   # debounces the encoder so one physical click = one step change
@@ -103,10 +109,10 @@ interval:
       - lambda: |-
           bool timer_busy = id(in_timer) && (id(timer_running) || id(timer_alarm_active));
           bool on_clock = timer_busy || (!id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
-                          !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                          !id(in_lights_menu) && !id(in_ha_light) &&
                           !id(in_radiators_menu) && !id(in_radiator_room) &&
                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
-                          !id(in_dial_sensitivity) &&
+                          !id(in_sleep_after) && !id(in_dial_sensitivity) &&
                           !id(in_buzzer_volume) && !id(in_motion_alert) && !id(in_menu_items) &&
                           !id(in_timer));
           if (!on_clock) {
@@ -157,9 +163,19 @@ script:
       - globals.set: {id: display_asleep, value: 'true'}
       - globals.set: {id: home_encoder_step_accum, value: '0'}
       - lambda: 'lv_obj_clear_flag(id(sleep_overlay), LV_OBJ_FLAG_HIDDEN);'
+      # Idle diet (power.yaml): nothing to draw, no NFC field while dark.
+      - delay: 100ms
+      - if:
+          condition:
+            lambda: 'return id(display_asleep);'   # not woken again meanwhile
+          then:
+            - lvgl.pause:
+            - script.execute: nfc_power_down
 
   - id: wake_display
     then:
+      - lvgl.resume:
+      - script.execute: nfc_power_up
       - light.turn_on:
           id: display_backlight
           brightness: 100%
@@ -176,7 +192,6 @@ script:
       - globals.set: {id: in_light, value: 'false'}
       - globals.set: {id: in_colorpicker, value: 'false'}
       - globals.set: {id: in_air, value: 'false'}
-      - globals.set: {id: in_music, value: 'false'}
       - globals.set: {id: in_timer, value: 'false'}
       - globals.set: {id: in_lights_menu, value: 'false'}
       - globals.set: {id: in_ha_light, value: 'false'}
@@ -185,6 +200,7 @@ script:
       - globals.set: {id: in_settings_menu, value: 'false'}
       - globals.set: {id: in_display_timeout, value: 'false'}
       - globals.set: {id: in_menu_timeout, value: 'false'}
+      - globals.set: {id: in_sleep_after, value: 'false'}
       - globals.set: {id: in_dial_sensitivity, value: 'false'}
       - globals.set: {id: in_buzzer_volume, value: 'false'}
       - globals.set: {id: in_motion_alert, value: 'false'}
@@ -301,7 +317,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 6;
+                  int n = 7;
                   id(settings_menu_sel) = ((id(settings_menu_sel) - 1) % n + n) % n;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
@@ -395,7 +411,7 @@ script:
                   lv_obj_set_style_opa(id(sm_center_sub), center_sub_opa, LV_PART_MAIN);
                 });
                 lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 6;
+                  id(settings_menu_sel) = (id(settings_menu_sel) + 1) % 7;
                   id(refresh_settings_menu).execute();
                   id(settings_menu_animating) = false;
                 });
@@ -411,12 +427,13 @@ script:
           else if (sel == 2) { id(open_buzzer_volume).execute(); }
           else if (sel == 3) { id(open_motion_alert).execute(); }
           else if (sel == 4) { id(open_dial_sensitivity).execute(); }
-          else { id(open_menu_items).execute(); }
+          else if (sel == 5) { id(open_menu_items).execute(); }
+          else { id(open_sleep_after).execute(); }
 
   - id: refresh_settings_menu
     then:
       - lambda: |-
-          const int ITEM_N = 6;
+          const int ITEM_N = 7;
           const int SLOT_N = 5;
           const float CY = 120.0f;
           const float ARC_CX = 162.0f;
@@ -438,20 +455,25 @@ script:
           snprintf(sub_sensitivity, sizeof(sub_sensitivity), "%d", id(encoder_step_threshold));
           static char sub_items[16];
           int items_on = id(menu_show_timer).state + id(menu_show_lights).state + id(menu_show_radiators).state +
-                         id(menu_show_ac).state + id(menu_show_music).state;
-          snprintf(sub_items, sizeof(sub_items), "%d of 5 shown", items_on);
+                         id(menu_show_ac).state;
+          snprintf(sub_items, sizeof(sub_items), "%d of 4 shown", items_on);
+          static char sub_sleep[16];
+          const int sleep_min = (int) id(sleep_after_min).state;
+          if (sleep_min <= 0) snprintf(sub_sleep, sizeof(sub_sleep), "Never");
+          else snprintf(sub_sleep, sizeof(sub_sleep), "%d min", sleep_min);
 
-          const char* TITLES[6] = {"Display Timeout", "Menu Timeout", "Buzzer", "Motion Alert", "Dial Sensitivity", "Menu Items"};
-          const char* SUBTITLES[6] = {sub_display, sub_menu, sub_buzzer, sub_motion, sub_sensitivity, sub_items};
-          const uint32_t ACCENT_COLORS[6] = {0x9CA3AF, 0x38BDF8, 0x4ADE80, 0xF87171, 0x38BDF8, 0x576BFE};
-          const uint32_t PILL_COLORS[6] = {0x1E2024, 0x0F1E2A, 0x0A2A14, 0x2A1414, 0x0F1E2A, 0x0D1537};
-          const lv_img_dsc_t* IMGS[6] = {
+          const char* TITLES[7] = {"Display Timeout", "Menu Timeout", "Buzzer", "Motion Alert", "Dial Sensitivity", "Menu Items", "Sleep After"};
+          const char* SUBTITLES[7] = {sub_display, sub_menu, sub_buzzer, sub_motion, sub_sensitivity, sub_items, sub_sleep};
+          const uint32_t ACCENT_COLORS[7] = {0x9CA3AF, 0x38BDF8, 0x4ADE80, 0xF87171, 0x38BDF8, 0x576BFE, 0xA78BFA};
+          const uint32_t PILL_COLORS[7] = {0x1E2024, 0x0F1E2A, 0x0A2A14, 0x2A1414, 0x0F1E2A, 0x0D1537, 0x1E1533};
+          const lv_img_dsc_t* IMGS[7] = {
             id(menu_img_timer)->get_lv_image_dsc(),
             id(menu_img_timer)->get_lv_image_dsc(),
             id(menu_img_speaker)->get_lv_image_dsc(),
             id(menu_img_motion_alert)->get_lv_image_dsc(),
             id(menu_img_timer)->get_lv_image_dsc(),
-            id(menu_img_home)->get_lv_image_dsc()
+            id(menu_img_home)->get_lv_image_dsc(),
+            id(menu_img_timer)->get_lv_image_dsc()
           };
 
           int sel = id(settings_menu_sel);
@@ -528,8 +550,9 @@ script:
             }
           }
 
-          lv_obj_t* sdots[6] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2), id(sm_sdot_3), id(sm_sdot_4), id(sm_sdot_5)};
+          lv_obj_t* sdots[7] = {id(sm_sdot_0), id(sm_sdot_1), id(sm_sdot_2), id(sm_sdot_3), id(sm_sdot_4), id(sm_sdot_5), id(sm_sdot_6)};
           for (int d = 0; d < ITEM_N; d++) {
+            lv_obj_align(sdots[d], LV_ALIGN_RIGHT_MID, -10, d * 14 - (ITEM_N - 1) * 7);  // centred column
             if (d == sel) {
               lv_obj_set_style_bg_color(sdots[d], lv_color_hex(ACCENT_COLORS[d]), LV_PART_MAIN);
               lv_obj_set_style_opa(sdots[d], 255, LV_PART_MAIN);
@@ -660,6 +683,44 @@ script:
           snprintf(buf, sizeof(buf), "%d", id(menu_timeout_s));
           lv_label_set_text(id(lbl_menu_timeout_val), buf);
       - script.execute: refresh_settings_menu
+
+  # Sleep After (power.yaml): minutes the screen stays dark before deep sleep.
+  - id: open_sleep_after
+    then:
+      - globals.set: {id: in_sleep_after, value: 'true'}
+      - globals.set: {id: sleep_after_encoder_accum, value: '0'}
+      - script.execute: refresh_sleep_after
+      - lvgl.page.show:
+          id: page_sleep_after
+          animation: MOVE_LEFT
+
+  - id: close_sleep_after
+    then:
+      - globals.set: {id: in_sleep_after, value: 'false'}
+      - script.execute: open_settings_menu
+
+  - id: sleep_after_step
+    parameters:
+      delta: int
+    then:
+      - lambda: |-
+          int v = (int) id(sleep_after_min).state + delta;
+          if (v < 0) v = 0;
+          if (v > 60) v = 60;
+          auto call = id(sleep_after_min).make_call();
+          call.set_value(v);
+          call.perform();
+      - script.execute: refresh_sleep_after
+
+  - id: refresh_sleep_after
+    then:
+      - lambda: |-
+          static char buf[8];
+          const int v = (int) id(sleep_after_min).state;
+          if (v <= 0) snprintf(buf, sizeof(buf), "Off");
+          else snprintf(buf, sizeof(buf), "%d", v);
+          lv_label_set_text(id(lbl_sleep_after_val), buf);
+          lv_label_set_text(id(lbl_sleep_after_unit), v <= 0 ? "never sleeps" : "minutes after dark");
 
   - id: open_buzzer_volume
     then:
@@ -800,7 +861,7 @@ script:
   - id: menu_items_next_field
     then:
       - globals.set: {id: menu_items_encoder_accum, value: '0'}
-      - lambda: 'id(menu_items_field) = (id(menu_items_field) + 1) % 6;'
+      - lambda: 'id(menu_items_field) = (id(menu_items_field) + 1) % 5;'
       - script.execute: refresh_menu_items
 
   # Either direction of the knob switches the focused item on or off. The
@@ -808,21 +869,21 @@ script:
   - id: menu_items_toggle
     then:
       - lambda: |-
-          switch_::Switch* SW[6] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
-                                    id(menu_show_ac), id(menu_show_music), id(menu_follow_season)};
+          switch_::Switch* SW[5] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
+                                    id(menu_show_ac), id(menu_follow_season)};
           SW[id(menu_items_field)]->toggle();
 
   - id: refresh_menu_items
     then:
       - lambda: |-
-          const char* NAMES[6] = {"Timer", "Lights", "Radiators", "AC", "Music", "Auto Season"};
-          switch_::Switch* SW[6] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
-                                    id(menu_show_ac), id(menu_show_music), id(menu_follow_season)};
-          lv_obj_t* LBLS[6] = {id(lbl_menu_items_row_0), id(lbl_menu_items_row_1), id(lbl_menu_items_row_2),
-                               id(lbl_menu_items_row_3), id(lbl_menu_items_row_4), id(lbl_menu_items_row_5)};
-          static char bufs[6][24];
+          const char* NAMES[5] = {"Timer", "Lights", "Radiators", "AC", "Auto Season"};
+          switch_::Switch* SW[5] = {id(menu_show_timer), id(menu_show_lights), id(menu_show_radiators),
+                                    id(menu_show_ac), id(menu_follow_season)};
+          lv_obj_t* LBLS[5] = {id(lbl_menu_items_row_0), id(lbl_menu_items_row_1), id(lbl_menu_items_row_2),
+                               id(lbl_menu_items_row_3), id(lbl_menu_items_row_4)};
+          static char bufs[5][24];
           int f = id(menu_items_field);
-          for (int i = 0; i < 6; i++) {
+          for (int i = 0; i < 5; i++) {
             snprintf(bufs[i], sizeof(bufs[i]), "%s: %s", NAMES[i], SW[i]->state ? "ON" : "OFF");
             lv_label_set_text(LBLS[i], bufs[i]);
             uint32_t c = (i == f) ? (SW[i]->state ? 0x4ADE80 : 0xFFFFFF) : 0x6B7280;
@@ -833,6 +894,11 @@ script:
     then:
       - globals.set: {id: motion_alarm_active, value: 'true'}
       - globals.set: {id: motion_alarm_blink, value: 'true'}
+      - if:
+          condition:
+            lambda: 'return id(display_asleep);'
+          then:
+            - script.execute: wake_display   # resumes LVGL for the red overlay
       - light.turn_on:
           id: display_backlight
           brightness: 100%
@@ -1129,6 +1195,19 @@ lvgl:
                   border_width: 0
                   clickable: false
                   scrollbar_mode: "OFF"
+              - obj:
+                  id: sm_sdot_6
+                  align: RIGHT_MID
+                  x: -10
+                  y: 49
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
 
     - id: page_display_timeout
       bg_color: col_light_bg
@@ -1269,6 +1348,60 @@ lvgl:
                   align: CENTER
                   y: 60
                   text: "seconds"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+    - id: page_sleep_after
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_sleep_after
+      widgets:
+        - obj:
+            align: TOP_LEFT
+            x: 0
+            y: 0
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  align: CENTER
+                  y: -40
+                  text: "Sleep After"
+                  text_font: font_lbl
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+
+              - label:
+                  id: lbl_sleep_after_val
+                  align: CENTER
+                  y: 0
+                  text: "5"
+                  text_font: font_light_big
+                  text_color: 0xFFFFFF
+
+              - label:
+                  id: lbl_sleep_after_unit
+                  align: CENTER
+                  y: 60
+                  text: "minutes after dark"
+                  text_font: font_lbl
+                  text_color: 0x6B7280
+                  text_align: CENTER
+
+              - label:
+                  align: CENTER
+                  y: 80
+                  text: "Touch wakes it"
                   text_font: font_lbl
                   text_color: 0x6B7280
                   text_align: CENTER
@@ -1563,29 +1696,6 @@ lvgl:
                   widgets:
                     - label:
                         id: lbl_menu_items_row_4
-                        align: CENTER
-                        text: ""
-                        text_font: font_menu_item
-                        text_color: 0x6B7280
-                        text_align: CENTER
-
-              - obj:
-                  align: CENTER
-                  y: 50
-                  width: 200
-                  height: 24
-                  bg_opa: TRANSP
-                  border_width: 0
-                  clickable: true
-                  scrollbar_mode: "OFF"
-                  pad_all: 0
-                  on_click:
-                    - globals.set: {id: menu_items_field, value: '5'}
-                    - globals.set: {id: menu_items_encoder_accum, value: '0'}
-                    - script.execute: refresh_menu_items
-                  widgets:
-                    - label:
-                        id: lbl_menu_items_row_5
                         align: CENTER
                         text: ""
                         text_font: font_menu_item

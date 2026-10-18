@@ -146,6 +146,10 @@ script:
             id(close_menu_timeout).execute();
             return;
           }
+          if (id(in_sleep_after)) {
+            id(close_sleep_after).execute();
+            return;
+          }
           if (id(in_dial_sensitivity)) {
             id(close_dial_sensitivity).execute();
             return;
@@ -168,11 +172,6 @@ script:
           }
           if (id(in_air)) {
             id(close_air).execute();
-            return;
-          }
-          if (id(in_music)) {
-            id(in_music) = false;
-            id(open_menu).execute();
             return;
           }
           if (id(in_timer)) {
@@ -228,11 +227,6 @@ sensor:
                           id(air_fan_up).execute();
                         }
                       }
-            - if:
-                condition:
-                  lambda: 'return id(in_music);'
-                then:
-                  - script.execute: music_volume_up
             - if:
                 condition:
                   lambda: 'return id(in_menu);'
@@ -295,6 +289,16 @@ sensor:
                       }
             - if:
                 condition:
+                  lambda: 'return id(in_sleep_after);'
+                then:
+                  - lambda: |-
+                      id(sleep_after_encoder_accum) += 1;
+                      if (id(sleep_after_encoder_accum) >= id(encoder_step_threshold)) {
+                        id(sleep_after_encoder_accum) = 0;
+                        id(sleep_after_step).execute(1);
+                      }
+            - if:
+                condition:
                   lambda: 'return id(in_dial_sensitivity);'
                 then:
                   - lambda: |-
@@ -348,9 +352,9 @@ sensor:
                 condition:
                   lambda: |-
                     return !id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
-                           !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                           !id(in_lights_menu) && !id(in_ha_light) &&
                            !id(in_radiators_menu) && !id(in_radiator_room) &&
-                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
+                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) && !id(in_sleep_after) &&
                            !id(in_dial_sensitivity) &&
                            !id(in_buzzer_volume) && !id(in_motion_alert) && !id(in_menu_items) &&
                            !id(in_timer);
@@ -400,11 +404,6 @@ sensor:
                           id(air_fan_down).execute();
                         }
                       }
-            - if:
-                condition:
-                  lambda: 'return id(in_music);'
-                then:
-                  - script.execute: music_volume_down
             - if:
                 condition:
                   lambda: 'return id(in_menu);'
@@ -467,6 +466,16 @@ sensor:
                       }
             - if:
                 condition:
+                  lambda: 'return id(in_sleep_after);'
+                then:
+                  - lambda: |-
+                      id(sleep_after_encoder_accum) -= 1;
+                      if (id(sleep_after_encoder_accum) <= -id(encoder_step_threshold)) {
+                        id(sleep_after_encoder_accum) = 0;
+                        id(sleep_after_step).execute(-1);
+                      }
+            - if:
+                condition:
                   lambda: 'return id(in_dial_sensitivity);'
                 then:
                   - lambda: |-
@@ -520,9 +529,9 @@ sensor:
                 condition:
                   lambda: |-
                     return !id(in_menu) && !id(in_light) && !id(in_colorpicker) && !id(in_air) &&
-                           !id(in_music) && !id(in_lights_menu) && !id(in_ha_light) &&
+                           !id(in_lights_menu) && !id(in_ha_light) &&
                            !id(in_radiators_menu) && !id(in_radiator_room) &&
-                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) &&
+                           !id(in_display_timeout) && !id(in_settings_menu) && !id(in_menu_timeout) && !id(in_sleep_after) &&
                            !id(in_dial_sensitivity) &&
                            !id(in_buzzer_volume) && !id(in_motion_alert) && !id(in_menu_items) &&
                            !id(in_timer);

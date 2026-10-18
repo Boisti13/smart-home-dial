@@ -51,8 +51,6 @@ bash ../claude-setup/scripts/esphome-check.sh dial.yaml           # + compile: a
   (`/opt/esphome-builder`); when the app updates, bump `requirements.txt`
   and update the builder (`pip install -U 'esphome-device-builder[esphome]'`
   in CT 117), then check again.
-- SendSpin (music page, album art) is ESPHome's built-in component since the
-  2026.9 port; there are no local `components/` any more.
 - **Home Assistant copy**: the ESPHome app builds from
   `/homeassistant/esphome/smart-home-dial/` (`dial.yaml`, `src/`) via the
   stub `/homeassistant/esphome/m5stack-dialv1.yaml`, which sets
@@ -64,6 +62,11 @@ bash ../claude-setup/scripts/esphome-check.sh dial.yaml           # + compile: a
   (remove the old `src/` first so deleted files go too), and check that the
   files match. Then the owner flashes. Every local file path in the YAML
   starts with `${dial_dir}/`, or the HA build breaks.
+- Power (`src/main/power.yaml`): deep sleep wakes only from RTC pins
+  (GPIO 0–21; touch INT is GPIO14, the ring and button are not). GPIO46
+  must stay high or the board switches off: latch it before deep sleep and
+  release it at boot (`dial.yaml` on_boot priority 1000). Anything that
+  draws while the screen is dark goes into `sleep_display` / `wake_display`.
 - Hardware facts: no PSRAM (keep images and LVGL buffers small); the encoder
   gives ~4 raw ticks per click (debounce value pages through
   `encoder_step_threshold`, see [docs/pages.md](docs/pages.md#dial-sensitivity)).

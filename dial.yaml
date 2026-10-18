@@ -10,6 +10,7 @@ packages:
   entities:    !include src/main/entities.yaml
   globals:     !include src/main/globals.yaml
   diagnostics: !include src/main/diagnostics.yaml
+  power:       !include src/main/power.yaml
   load_page:   !include src/pages/load.yaml
   clock_page:  !include src/pages/main.yaml
   menu_page:   !include src/pages/menu.yaml
@@ -17,7 +18,6 @@ packages:
   ha_lights_page: !include src/pages/ha_lights.yaml
   radiators_page: !include src/pages/radiators.yaml
   air_page:    !include src/pages/air.yaml
-  music_page:  !include src/pages/music.yaml
   timer_page:  !include src/pages/timer.yaml
   settings_page: !include src/pages/settings.yaml
 
@@ -26,8 +26,19 @@ esphome:
   friendly_name: M5Stack Dial
   project:
     name: "smart-home-dial.firmware"
-    version: "2.0.0"
+    version: "2.1.0"
   on_boot:
+    - priority: 1000
+      then:
+        # Coming back from deep sleep, GPIO46 (power latch) and GPIO9
+        # (backlight) are still held (src/main/power.yaml). Drive them first,
+        # then release, so the latch never drops.
+        - lambda: |-
+            gpio_set_direction(GPIO_NUM_46, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_46, 1);
+            gpio_hold_dis(GPIO_NUM_46);
+            gpio_hold_dis(GPIO_NUM_9);
+            id(woke_from_sleep) = (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0);
     - priority: 800
       then:
         - switch.turn_on: power_hold
@@ -42,6 +53,15 @@ esphome:
             lv_obj_set_style_anim_duration(id(lm_center_lbl), lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN);
             lv_obj_set_style_anim_duration(id(sm_center_lbl), lv_anim_speed(id(scroll_anim_speed)), LV_PART_MAIN);
         - script.execute: update_loading_page
+        # Woken by a touch: straight to the clock (the RTC has the time), with
+        # the HA offline pill until Home Assistant is connected again.
+        - if:
+            condition:
+              lambda: 'return id(woke_from_sleep) && !id(ha_connected);'
+            then:
+              - lvgl.widget.hide: loading_page
+              - lvgl.widget.show: ha_offline_badge
+              - lvgl.page.show: page_clock
 
 esp32:
   board: m5stack-stamps3
@@ -76,11 +96,16 @@ api:
 
 ota:
   - platform: esphome
+    on_begin:
+      - globals.set: {id: ota_running, value: 'true'}   # no deep sleep mid-update
+    on_error:
+      - globals.set: {id: ota_running, value: 'false'}
     # Uploads are encrypted with the API key (dial_api_key) and must be;
     # no separate OTA password.
     encryption: {}
 
 wifi:
+  power_save_mode: light   # radio sleeps between beacons; stays connected
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
@@ -116,12 +141,6 @@ image:
   - platform: file
     file: ${dial_dir}/src/assets/images/ac.png
     id: img_ac
-    type: RGB565
-    transparency: alpha_channel
-    resize: 24x24
-  - platform: file
-    file: ${dial_dir}/src/assets/images/music.png
-    id: img_music
     type: RGB565
     transparency: alpha_channel
     resize: 24x24

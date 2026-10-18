@@ -14,6 +14,7 @@ for working on it is in [CLAUDE.md](../CLAUDE.md).
 | `src/main/entities.yaml` | Home Assistant entity IDs (substitutions) |
 | `src/main/globals.yaml` | User-tunable defaults |
 | `src/main/diagnostics.yaml` | Wi-Fi signal, uptime, restart and safe-mode buttons |
+| `src/main/power.yaml` | Battery saving: deep sleep with touch wake, *Sleep After*, *Stay Awake*, NFC power-down |
 | `src/pages/*.yaml` | One LVGL page per feature, each an ESPHome package |
 | `src/assets/fonts/`, `src/assets/images/` | Local fonts and small icons |
 | `hardware/3d-models/` | STL files for the case |
@@ -28,7 +29,6 @@ for working on it is in [CLAUDE.md](../CLAUDE.md).
 | `ha_lights.yaml` | Lights submenu and per-light page |
 | `radiators.yaml` | Radiators submenu and per-room page |
 | `air.yaml` | AC |
-| `music.yaml` | Music (SendSpin) |
 | `timer.yaml` | Timer and alarm |
 | `settings.yaml` | Settings submenu, Motion Alert, sleep/wake, timeouts |
 

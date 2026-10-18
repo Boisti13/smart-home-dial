@@ -70,7 +70,6 @@ substitutions:
   weather_entity: weather.your_location        # only wind speed is used
   aqi_entity: sensor.your_air_quality_index
   climate_entity: climate.your_ac
-  music_player_entity: media_player.your_player
 
   # Lights: up to 6 after the Dial Ring; light.* dims, switch.* is on/off
   light_count: "2"
@@ -126,21 +125,6 @@ the main menu ([pages.md → Menu items](pages.md#menu-items)).
 `Summer` and `Winter`. The Dial shows the AC in summer and the radiators in
 winter, unless the switch *Menu Follows Season* is off. Without such a helper, create one under *Settings → Devices &
 services → Helpers → Dropdown* with exactly those two options.
-
-## Music player
-
-Choose the entity that actually plays audio, not the Dial itself. A good
-target exposes:
-
-- `state`: `playing` or `paused`
-- `volume_level`
-- `media_title`, `media_artist`
-- `media_duration`, `media_position`
-- `entity_picture`
-
-If the entity is `unavailable`, Home Assistant disables its controls and the
-Dial can't sync it. The page itself talks to SendSpin; see
-[pages.md → Music](pages.md#music).
 
 ## Time zone
 
@@ -204,5 +188,4 @@ follows it).
 | `src/pages/air.yaml` | AC mode strings |
 | `src/pages/ha_lights.yaml`, `src/pages/menu.yaml` | Lights: entities and display names |
 | `src/pages/radiators.yaml`, `src/pages/menu.yaml` | Radiators: rooms, entities, window sensors |
-| `src/pages/music.yaml` | Music page layout |
 | `src/pages/settings.yaml` | Ranges of the Settings entries, Motion Alert color |

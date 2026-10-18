@@ -4,7 +4,7 @@ This project is released under the MIT License for the original project files. S
 
 ## SendSpin
 
-Until v1.5.0, `components/` held copies of SendSpin-related ESPHome components (`Copyright 2025 Sendspin Contributors`, Apache License 2.0). Since v1.6.0 the project uses ESPHome's built-in `sendspin` component instead and ships no copies; it is downloaded with ESPHome under ESPHome's licenses.
+Until v1.5.0, `components/` held copies of SendSpin-related ESPHome components (`Copyright 2025 Sendspin Contributors`, Apache License 2.0); v1.6.0 to v2.0.0 used ESPHome's built-in `sendspin` component. Since v2.1.0 the music page is gone and SendSpin isn't used at all. The `media_player_icons.ttf` font went with it.
 
 ## Material Design Icons font
 

@@ -6,7 +6,24 @@ All notable changes, newest first. Versions follow semantic versioning
 
 ## Unreleased
 
+## v2.1.0 — 2026-10-18
+
+Test version for the battery: built and copied to Home Assistant, not yet
+measured on the device.
+
+### Added
+- **Deep sleep with touch wake**: *Sleep After* minutes (default 5) after the screen went dark, the Dial goes into deep sleep; a touch wakes it straight to the clock, with live values after about 8 s. Never while *Stay Awake* is on, a timer runs or rings, Motion Alert rings or an OTA update runs. The ring and button can't wake it from deep sleep (not RTC pins), only a dark screen.
+- **Sleep After** in Settings (0 = never, up to 60 min) and as `number.m5stack_dial_sleep_after` in Home Assistant; **Stay Awake** switch in Home Assistant.
+
+### Changed
+- **Less power while the screen is dark**: drawing (LVGL) is paused and the NFC reader is powered down and not polled until the screen wakes; Wi-Fi uses light power-save. NFC tags are read only while the screen is on.
+- A Motion Alert wakes the screen fully.
+
+### Removed
+- **The music page** (SendSpin player, album art, volume) with its menu item, the *Menu Music* switch, `music_player_entity` and its icons and font. The main menu has six items now. Flash use went from 85 % to 78 %.
+
 ### Under the hood
+- `src/main/power.yaml`; GPIO46 (power latch) and GPIO9 (backlight) are held through deep sleep and released at the next boot.
 - Config and compile checks run on the ESPHome build server (CT 117) with `claude-setup/scripts/esphome-check.sh` instead of the dev box (`CLAUDE.md`, `docs/development.md`).
 
 ## v2.0.0 — 2026-10-14

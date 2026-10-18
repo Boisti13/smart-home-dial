@@ -1,0 +1,109 @@
+# Battery power saving (v2.1.0). The Dial runs on a LiPo; about 10.5 h when
+# it stayed awake and idle (measured 2026-10-15).
+#
+# Stage A, while the screen is dark (sleep_display / wake_display in
+# src/pages/settings.yaml): LVGL paused, the RC522 NFC reader powered down and
+# not polled, Wi-Fi in light power-save (dial.yaml).
+#
+# Stage B, deep sleep: "Sleep After" minutes after the screen went dark the
+# ESP32 goes into deep sleep and only a touch wakes it: the touch controller's
+# interrupt is on GPIO14, an RTC pin. The ring (GPIO40/41) and the button
+# (GPIO42) are not RTC pins and can't wake it. While asleep the Dial is
+# offline in Home Assistant (no Motion Alert, no control from HA); after a
+# touch it boots straight to the clock and is back in about 8 s.
+# It never goes to sleep while Stay Awake is on, a timer runs or rings,
+# Motion Alert rings, or an OTA update runs.
+#
+# The board only stays powered while GPIO46 (HOLD) is high, so the pin is
+# latched high through deep sleep (gpio_hold_en); dial.yaml releases it at
+# the next boot. Without that the board would switch itself off instead.
+
+deep_sleep:
+  id: deep_sleep_ctrl
+  wakeup_pin:
+    number: GPIO14
+    inverted: true            # FT5x06 INT is active low
+    allow_other_uses: true    # also the touchscreen's interrupt_pin
+  wakeup_pin_mode: KEEP_AWAKE # a finger already on the screen: stay awake
+
+globals:
+  - id: woke_from_sleep
+    type: bool
+    initial_value: 'false'    # this boot came from a touch in deep sleep
+  - id: ota_running
+    type: bool
+    initial_value: 'false'
+
+number:
+  - platform: template
+    id: sleep_after_min
+    name: "Sleep After"
+    icon: mdi:sleep
+    entity_category: config
+    unit_of_measurement: min
+    mode: box
+    min_value: 0              # 0 = never deep sleep
+    max_value: 60
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 5
+    on_value:
+      - lambda: |-
+          if (id(in_sleep_after)) id(refresh_sleep_after).execute();
+          else if (id(in_settings_menu)) id(refresh_settings_menu).execute();
+
+switch:
+  - platform: template
+    id: stay_awake
+    name: "Stay Awake"
+    icon: mdi:sleep-off
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          if (!id(display_asleep) || id(stay_awake).state || id(ota_running)) return;
+          const int mins = (int) id(sleep_after_min).state;
+          if (mins <= 0) return;
+          if (id(timer_running) || id(timer_alarm_active) || id(motion_alarm_active)) return;
+          const uint32_t idle_ms = (uint32_t) id(display_timeout_s) * 1000 + (uint32_t) mins * 60000;
+          if (millis() - id(last_activity_ms) < idle_ms) return;
+          id(enter_deep_sleep).execute();
+
+script:
+  # RC522: stop polling and switch the chip (and its RF field) off.
+  - id: nfc_power_down
+    then:
+      - component.suspend: nfc_reader
+      - lambda: |-
+          const uint8_t cmd[2] = {0x01, 0x10};   // CommandReg: soft power-down
+          id(internal_i2c)->write(0x28, cmd, 2);
+
+  - id: nfc_power_up
+    then:
+      - lambda: |-
+          const uint8_t cmd[2] = {0x01, 0x00};   // CommandReg: Idle, leaves power-down
+          id(internal_i2c)->write(0x28, cmd, 2);
+      - delay: 50ms
+      - component.resume: nfc_reader
+
+  - id: enter_deep_sleep
+    mode: single
+    then:
+      - logger.log: "Deep sleep until the screen is touched"
+      - script.execute: nfc_power_down
+      - lambda: |-
+          // Power latch high and backlight off through deep sleep; dial.yaml
+          // releases both pins at the next boot.
+          gpio_set_level(GPIO_NUM_46, 1);
+          gpio_hold_en(GPIO_NUM_46);
+          gpio_reset_pin(GPIO_NUM_9);
+          gpio_set_direction(GPIO_NUM_9, GPIO_MODE_OUTPUT);
+          gpio_set_level(GPIO_NUM_9, 0);
+          gpio_hold_en(GPIO_NUM_9);
+          gpio_deep_sleep_hold_en();
+      - deep_sleep.enter: deep_sleep_ctrl

@@ -91,6 +91,7 @@ script:
       - lambda: |-
           if (!id(ha_connected)) {
             id(ha_connected) = true;
+            if (id(woke_from_sleep)) return;   // already on the clock, no boot animation
             lv_label_set_text(id(lbl_status), "Connected!");
             lv_label_set_text(id(lbl_sub),    "Home Assistant");
             id(check_boot_status).execute();
