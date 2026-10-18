@@ -37,7 +37,7 @@ reworked dial feel added on top.
 - **Follows the season** (can be turned off): a Summer/Winter select in Home Assistant shows the AC in summer and the radiators in winter
 - **Feels the same everywhere**: one click is one step on every page and menu, and backing out of a submenu returns you to where you were
 - **Three ways to navigate**: turn the knob, touch, or press the front button. From the home screen a swipe or a turn opens the menu
-- **Made for the battery**: the screen goes dark by itself, and with it the drawing and the NFC reader; a few minutes later the Dial goes into **deep sleep** and a **touch wakes it** (straight to the clock, live values after about 8 s). *Sleep After* and *Stay Awake* on the Dial and in Home Assistant
+- **Made for the battery**: the screen goes dark by itself, and with it the drawing and the NFC reader; a few minutes later the Dial goes into **deep sleep** and a **touch wakes it** (straight to the clock; live values once Home Assistant reconnects). *Sleep After* and *Stay Awake* on the Dial and in Home Assistant
 - **Knows when Home Assistant is gone**: a red *HA offline* pill on every page instead of quietly showing old values
 - **Diagnostics in Home Assistant**: Wi-Fi signal, uptime, restart and safe-mode buttons
 - **Your own lights and rooms**: names, entities and how many, all in `src/main/entities.yaml`

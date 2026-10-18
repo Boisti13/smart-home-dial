@@ -9,8 +9,9 @@
 # ESP32 goes into deep sleep and only a touch wakes it: the touch controller's
 # interrupt is on GPIO14, an RTC pin. The ring (GPIO40/41) and the button
 # (GPIO42) are not RTC pins and can't wake it. While asleep the Dial is
-# offline in Home Assistant (no Motion Alert, no control from HA); after a
-# touch it boots straight to the clock and is back in about 8 s.
+# out of Home Assistant's reach (no Motion Alert, no control from HA; HA keeps
+# the last values); after a touch it boots straight to the clock and has live
+# values once HA reconnects (37 s in the first test, HA's retry backoff).
 # It never goes to sleep while Stay Awake is on, a timer runs or rings,
 # Motion Alert rings, or an OTA update runs.
 #

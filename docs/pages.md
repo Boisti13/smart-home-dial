@@ -254,7 +254,7 @@ stages:
 | Stage | When | What happens | Wakes on |
 |---|---|---|---|
 | **Screen dark** | *Display Timeout* (30 s) without input | backlight off, LVGL paused (nothing is drawn), NFC reader powered down and not polled; Wi-Fi in light power-save all the time | turn, touch or button, instantly |
-| **Deep sleep** | *Sleep After* (5 min) after the screen went dark | the ESP32 sleeps; offline in Home Assistant | **touch only**, then about 8 s until values are live |
+| **Deep sleep** | *Sleep After* (5 min) after the screen went dark | the ESP32 sleeps; Home Assistant can't reach it | **touch only**, then values are live once Home Assistant reconnects (37 s in the first test) |
 
 **Touch only**, because deep sleep can only be ended by an RTC pin: the
 touch controller's interrupt is on GPIO14 (RTC), the ring on GPIO40/41 and
@@ -265,9 +265,15 @@ Assistant is connected, instead of the boot animation.
 **It stays awake** while *Stay Awake* is on, a timer runs or rings, Motion
 Alert rings, or an OTA update runs.
 
-**While it sleeps** Motion Alert can't fire, Home Assistant shows the
-Dial's entities as unavailable and can't control it, and NFC tags aren't
-read. A change of `season_mode_entity` while it sleeps only shows in the
+**While it sleeps** Motion Alert can't fire, Home Assistant can't control
+it, and NFC tags aren't read. Home Assistant knows the Dial uses deep sleep
+and keeps showing its last values instead of *unavailable*.
+
+**Waking takes a while.** After a touch the Dial boots in about a second,
+but Home Assistant only reconnects at its next retry: after a long sleep it
+waits up to a minute between tries, unless it hears the Dial's mDNS
+announcement (37 s in the first test, against 6 s for a reboot while
+connected). A change of `season_mode_entity` while it sleeps only shows in the
 menu at the next change. For an OTA update, wake it and turn on *Stay
 Awake* first (Home Assistant can't reach it while it sleeps).
 

@@ -23,6 +23,6 @@
 | **ESPHome app: image or font file not found** | The top-level file must set `dial_dir: ./smart-home-dial` ([configuration](configuration.md#home-assistants-esphome-app)). |
 | **First build can't download fonts** | Connect to the internet once, or replace `gfonts://` fonts with local files. |
 | **Turns off on battery** | The V1.1 power-hold pin (GPIO46) must be switched on at boot ([Battery and sleep](pages.md#battery-and-sleep)). |
-| **Dial unavailable in Home Assistant** | Probably in deep sleep: touch it. For updates or automations that need it, turn on *Stay Awake* or set *Sleep After* to 0 ([Battery and sleep](pages.md#battery-and-sleep)). |
+| **Home Assistant can't reach the Dial** (actions do nothing, values don't change) | Probably in deep sleep: touch it. For updates or automations that need it, turn on *Stay Awake* or set *Sleep After* to 0 ([Battery and sleep](pages.md#battery-and-sleep)). |
 | **Turning the ring doesn't wake it** | Deep sleep only wakes on touch; the ring and button only wake a dark screen. |
 | **Doesn't wake from deep sleep at all** | The power latch didn't hold or the touch controller didn't signal: press the front button to power it on, set *Sleep After* to 0, and report it. |

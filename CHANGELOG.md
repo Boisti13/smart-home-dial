@@ -12,7 +12,7 @@ Test version for the battery: built and copied to Home Assistant, not yet
 measured on the device.
 
 ### Added
-- **Deep sleep with touch wake**: *Sleep After* minutes (default 5) after the screen went dark, the Dial goes into deep sleep; a touch wakes it straight to the clock, with live values after about 8 s. Never while *Stay Awake* is on, a timer runs or rings, Motion Alert rings or an OTA update runs. The ring and button can't wake it from deep sleep (not RTC pins), only a dark screen.
+- **Deep sleep with touch wake**: *Sleep After* minutes (default 5) after the screen went dark, the Dial goes into deep sleep; a touch wakes it straight to the clock, with live values once Home Assistant reconnects (37 s in the first test, 2026-10-18). Never while *Stay Awake* is on, a timer runs or rings, Motion Alert rings or an OTA update runs. The ring and button can't wake it from deep sleep (not RTC pins), only a dark screen.
 - **Sleep After** in Settings (0 = never, up to 60 min) and as `number.m5stack_dial_sleep_after` in Home Assistant; **Stay Awake** switch in Home Assistant.
 
 ### Changed
