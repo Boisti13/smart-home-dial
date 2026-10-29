@@ -14,9 +14,11 @@ those notes.
 - **Work on `dev`, commit and push to `dev`.** Don't merge to `main`, tag or
   release unless asked. "Make a new release" means the
   [release routine](docs/development.md#releases).
-- **Ask before side effects**: pushing, flashing, or touching Home Assistant.
-  Reading is fine. One standing exception: copying a new version to Home
-  Assistant's ESPHome folder (see *Home Assistant copy* below).
+- **Ask before side effects**: flashing, merging to `main`, or touching
+  Home Assistant. Reading is fine. Standing exceptions (owner, 2026-10-14 and
+  2026-10-29): once the compile check on the build server passes, push
+  `dev` and copy the new version to Home Assistant's ESPHome folder (see
+  *Home Assistant copy* below) without asking.
 - **One change = one commit with everything it needs**: the YAML, the
   version bump, the docs and the CHANGELOG entry. No "docs later".
 - **The owner compiles and flashes.** Validate locally; never upload to the
@@ -56,7 +58,7 @@ bash ../claude-setup/scripts/esphome-check.sh dial.yaml           # + compile: a
   stub `/homeassistant/esphome/m5stack-dialv1.yaml`, which sets
   `dial_dir: ./smart-home-dial`. **Every new version goes there unasked**
   (owner, 2026-10-14), so the owner can flash it straight away: once it is
-  pushed to `dev` and compiles on the dev box, back up the old folder
+  pushed to `dev` and compiles on the build server, back up the old folder
   (`tar czf /config/project-backups/esphome/smart-home-dial/smart-home-dial-vX.Y.Z.tar.gz.bak-<timestamp>`),
   replace `dial.yaml` and `src/` with `git archive <commit> dial.yaml src`
   (remove the old `src/` first so deleted files go too), and check that the
